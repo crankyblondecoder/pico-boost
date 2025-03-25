@@ -20,4 +20,4 @@ pico_enable_stdio_uart(pico_boost 0)
 # create map/bin/hex file etc.
 pico_add_extra_outputs(pico_boost)
 
-target_link_libraries(pico_boost pico_stdlib pico_multicore)
+target_link_libraries(pico_boost pico_stdlib pico_multicore pico_time)
