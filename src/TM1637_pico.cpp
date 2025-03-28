@@ -1,0 +1,187 @@
+#include "TM1637_pico.hpp"
+#include "hardware/gpio.h"
+#include "hardware/clocks.h"
+#include "pico/platform.h"
+
+TM1637Display::TM1637Display(uint8_t clk, uint8_t dio) : _clk(clk), _dio(dio)
+{
+	// Aim for 2 microsecond clock cycle duration.
+	_cpuCyclesPerQuarterClock = clock_get_hz(clk_sys) / 2000000;
+	_cpuCyclesPerHalfClock = _cpuCyclesPerQuarterClock * (uint32_t) 2;
+	_cpuCyclesPerClock = _cpuCyclesPerHalfClock * (uint32_t) 2;
+
+	gpio_init(_clk);
+	gpio_set_dir(_clk, GPIO_OUT);
+	gpio_init(_dio);
+	gpio_set_dir(_dio, GPIO_OUT);
+
+	// Put the chip into the stop state. This should be the state it stays in unless data is being transmitted to it.
+	gpio_put(_clk, 1);
+	gpio_put(_dio, 1);
+
+	// Wait a full clock to give it time to react.
+	busy_wait_at_least_cycles(_cpuCyclesPerClock);
+
+	clear();
+}
+
+void TM1637Display::__start()
+{
+	// "The start condition of data input is that when CLK is high, DIO changes from high to low.
+
+	// Assume the GPIO's are already in the stop state.
+
+	// High to low indicates start.
+	gpio_put(_dio, 0);
+
+	// Wait a full clock. This comes from the start of the timing diagrams from the datasheet.
+	busy_wait_at_least_cycles(_cpuCyclesPerClock);
+
+	// Set clock ready for data to be written. This is required by write function.
+	gpio_put(_clk, 0);
+}
+
+void TM1637Display::__stop()
+{
+	// "The end condition is that when CLK is high, DIO changes from low to high."
+
+	//
+	gpio_put(_clk, 0);
+	gpio_put(_dio, 0);
+
+	// TODO ... Should there also be a clock delay here?
+	gpio_put(_clk, 1);
+	gpio_put(_dio, 1);
+}
+
+uint8_t TM1637Display::__writeByte(uint8_t data)
+{
+	// "When inputting data, when CLK is high level, the signal on DIO must remain unchanged;
+	// only when the clock signal on CLK is low level, the signal on DIO can Change."
+
+	// In the data sheet, Data Creation Time (tSETUP) is 100ns. This is the minimum time required, after the data line is
+	// set, to wait before the clock rising edge.
+
+	// In the data sheet, Data Retention Time (tHOLD) is 100ns. This is the minimum time required, after the clock rising edge,
+	// that the signal on the data line must be kept steady.
+
+	// Assume clock low has been set prior to entry of this function.
+
+	uint8_t ack = 0;
+
+	for(uint8_t clockCount = 0; clockCount < 8; clockCount++)
+	{
+		// Write data on clock low.
+
+		// Wait a quarter clock after previous falling edge before setting dio.
+		busy_wait_at_least_cycles(_cpuCyclesPerQuarterClock);
+		gpio_put(_dio, (data & 0x01) ? 1 : 0);
+		data >>= 1;
+
+		// Allow another quarter clock to satisfy tSetup.
+		busy_wait_at_least_cycles(_cpuCyclesPerClock);
+
+		// Latch data on rising edge.
+		gpio_put(_clk, 1);
+
+		// Wait half clock to satisfy tHOLD.
+		busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
+
+		// Just before the falling clock edge of the 8th bit, put the dio pin into read mode, ready for the ACK.
+		gpio_set_dir(_dio, GPIO_IN);
+
+		// Create clock falling edge ready for next bit transfer.
+		gpio_put(_clk, 0);
+	}
+
+	// At this point the clock should be at the end of the falling edge.
+
+	// "The data transmission of TM1637 has the response signal ACK. When the transmitted data is correct, at the falling
+	// edge of the eighth clock, the chip will generate a response signal ACK to pull the DIO pin low, and release the DIO
+	// after the end of the ninth clock."
+
+	// Timing diagram suggests ACK at clock low should last a full clock.
+	// Sample in the middle of that period.
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
+	ack = gpio_get(_dio);
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
+
+	// Rising edge of 9th clock.
+	gpio_put(_clk, 1);
+	// Half clock of "top" of waveform.
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
+	// Falling edge. ACK period should end.
+	gpio_put(_clk, 0);
+
+	// Wait a quarter clock before pulling dio low, ready for stop.
+	busy_wait_at_least_cycles(_cpuCyclesPerQuarterClock);
+	gpio_set_dir(_dio, GPIO_OUT);
+	gpio_put(_dio, 0);
+
+	return ack;
+}
+
+void TM1637Display::setBrightness(uint8_t brightness)
+{
+	_brightness = brightness & 0x07;
+}
+
+void TM1637Display::clear()
+{
+	uint8_t data[] = {0, 0, 0, 0};
+	show(data);
+}
+
+void TM1637Display::show(uint8_t data[4])
+{
+	__start();
+	__writeByte(TM1637_CMD1);
+	__stop();
+
+	__start();
+	__writeByte(TM1637_CMD2);
+
+	for(uint8_t i = 0; i < 4; ++i)
+	{
+		__writeByte(__encodeDigit(data[i]));
+	}
+
+	__stop();
+
+	__start();
+	__writeByte(TM1637_CMD3 + _brightness);
+	__stop();
+}
+
+void TM1637Display::show(uint8_t position, uint8_t data)
+{
+	if(position > 3)
+	{
+		return;
+	}
+
+	__start();
+	__writeByte(TM1637_CMD1);
+	__stop();
+
+	__start();
+	__writeByte(TM1637_CMD2 + position);
+	__writeByte(__encodeDigit(data));
+	__stop();
+
+	__start();
+	__writeByte(TM1637_CMD3 + _brightness);
+	__stop();
+}
+
+uint8_t TM1637Display::__encodeDigit(uint8_t digit)
+{
+	if(digit > 9)
+	{
+		return 0;          // Handle out-of-range digits
+	}
+
+	return _digitToSegment[digit];
+}
+
+const uint8_t TM1637Display::_digitToSegment[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
