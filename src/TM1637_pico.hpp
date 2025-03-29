@@ -29,6 +29,15 @@ class TM1637Display
 		/** Set the brightness of the display. */
 		void setBrightness(uint8_t brightness);
 
+		/** Generate segment bitmap for a single digit (0-9). */
+		uint8_t encodeDigit(unsigned digit);
+
+		/**
+		 * Generate segment bitmap for a single characer.
+		 * @note Not all characters can be encoded and only a single character will be encoded for any given case.
+		 */
+		uint8_t encodeAlpha(char character);
+
 	private:
 
 		/** Write start bit pattern. */
@@ -39,9 +48,6 @@ class TM1637Display
 
 		/** Write a single byte. */
 		uint8_t __writeByte(uint8_t data);
-
-		/** Generate segment bitmap for a single digit (0-9). */
-		uint8_t __encodeDigit(uint8_t digit);
 
 		/**
 		 * Approximately wait a number of nanoseconds.

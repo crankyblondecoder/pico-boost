@@ -45,13 +45,17 @@ void TM1637Display::__stop()
 {
 	// "The end condition is that when CLK is high, DIO changes from low to high."
 
-	//
-	gpio_put(_clk, 0);
-	gpio_put(_dio, 0);
+	// Assume clk and dio are both low entering into this function.
 
-	// TODO ... Should there also be a clock delay here?
+	// Wait half a clock because a stop always follows the falling edge of the end of the ACK.
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
+
 	gpio_put(_clk, 1);
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
 	gpio_put(_dio, 1);
+
+	// Wait another half clock so that stop has holding period.
+	busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
 }
 
 uint8_t TM1637Display::__writeByte(uint8_t data)
@@ -73,7 +77,8 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 	{
 		// Write data on clock low.
 
-		// Wait a quarter clock after previous falling edge before setting dio.
+		// Wait a quarter clock after previous falling edge before setting dio. This should also give more than
+		// enough setup time prior to clk going high.
 		busy_wait_at_least_cycles(_cpuCyclesPerQuarterClock);
 		gpio_put(_dio, (data & 0x01) ? 1 : 0);
 		data >>= 1;
@@ -87,9 +92,6 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 		// Wait half clock to satisfy tHOLD.
 		busy_wait_at_least_cycles(_cpuCyclesPerHalfClock);
 
-		// Just before the falling clock edge of the 8th bit, put the dio pin into read mode, ready for the ACK.
-		gpio_set_dir(_dio, GPIO_IN);
-
 		// Create clock falling edge ready for next bit transfer.
 		gpio_put(_clk, 0);
 	}
@@ -99,6 +101,9 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 	// "The data transmission of TM1637 has the response signal ACK. When the transmitted data is correct, at the falling
 	// edge of the eighth clock, the chip will generate a response signal ACK to pull the DIO pin low, and release the DIO
 	// after the end of the ninth clock."
+
+	// Get dio ready to read ACK.
+	gpio_set_dir(_dio, GPIO_IN);
 
 	// Timing diagram suggests ACK at clock low should last a full clock.
 	// Sample in the middle of that period.
@@ -113,8 +118,7 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 	// Falling edge. ACK period should end.
 	gpio_put(_clk, 0);
 
-	// Wait a quarter clock before pulling dio low, ready for stop.
-	busy_wait_at_least_cycles(_cpuCyclesPerQuarterClock);
+	// Set dio back to output and pull low as default. This makes it ready for a stop if necessary.
 	gpio_set_dir(_dio, GPIO_OUT);
 	gpio_put(_dio, 0);
 
@@ -123,6 +127,7 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 
 void TM1637Display::setBrightness(uint8_t brightness)
 {
+	// Max brightness is 0x07.
 	_brightness = brightness & 0x07;
 }
 
@@ -141,9 +146,9 @@ void TM1637Display::show(uint8_t data[4])
 	__start();
 	__writeByte(TM1637_CMD2);
 
-	for(uint8_t i = 0; i < 4; ++i)
+	for(int index = 0; index < 4; ++index)
 	{
-		__writeByte(__encodeDigit(data[i]));
+		__writeByte(data[index]);
 	}
 
 	__stop();
@@ -166,7 +171,7 @@ void TM1637Display::show(uint8_t position, uint8_t data)
 
 	__start();
 	__writeByte(TM1637_CMD2 + position);
-	__writeByte(__encodeDigit(data));
+	__writeByte(data);
 	__stop();
 
 	__start();
@@ -174,14 +179,110 @@ void TM1637Display::show(uint8_t position, uint8_t data)
 	__stop();
 }
 
-uint8_t TM1637Display::__encodeDigit(uint8_t digit)
+uint8_t TM1637Display::encodeDigit(unsigned digit)
 {
 	if(digit > 9)
 	{
-		return 0;          // Handle out-of-range digits
+		// Handle out-of-range digits.
+		return 0;
 	}
 
 	return _digitToSegment[digit];
+}
+
+uint8_t TM1637Display::encodeAlpha(char character)
+{
+	uint8_t retVal = 0;
+
+	switch(character)
+	{
+		case 'a':
+		case 'A':
+			retVal = 0x77;
+			break;
+
+		case 'b':
+		case 'B':
+			retVal = 0x7C;
+			break;
+
+		case 'c':
+		case 'C':
+			retVal = 0x39;
+			break;
+
+		case 'd':
+		case 'D':
+			retVal = 0x5E;
+			break;
+
+		case 'e':
+		case 'E':
+			retVal = 0x79;
+			break;
+
+		case 'f':
+		case 'F':
+			retVal = 0x71;
+			break;
+
+		case 'g':
+		case 'G':
+			retVal = 0x6F;
+			break;
+
+		case 'h':
+		case 'H':
+			retVal = 0x76;
+			break;
+
+		case 'j':
+		case 'J':
+			retVal = 0x1E;
+			break;
+
+		case 'l':
+		case 'L':
+			retVal = 0x38;
+			break;
+
+		case 'o':
+		case 'O':
+			retVal = 0x5C;
+			break;
+
+		case 'p':
+		case 'P':
+			retVal = 0x73;
+			break;
+
+		case 'q':
+		case 'Q':
+			retVal = 0x67;
+			break;
+
+		case 'r':
+		case 'R':
+			retVal = 0x50;
+			break;
+
+		case 's':
+		case 'S':
+			retVal = 0x6D;
+			break;
+
+		case 'u':
+		case 'U':
+			retVal = 0x3E;
+			break;
+
+		case 'y':
+		case 'Y':
+			retVal = 0x6E;
+			break;
+	}
+
+	return retVal;
 }
 
 const uint8_t TM1637Display::_digitToSegment[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
