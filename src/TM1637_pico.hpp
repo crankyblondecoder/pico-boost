@@ -20,10 +20,16 @@ class TM1637Display
 		/** Clear all segments of the display. ie Switch it off. */
 		void clear();
 
-		/** Display chars in all 4 positions. */
+		/**
+		 * Display chars in all 4 positions.
+		 * The positions are from left to right, lowest to highest address respectively.
+		 */
 		void show(uint8_t data[4]);
 
-		/** Display char in single position. */
+		/**
+		 * Display char in single position.
+		 * The positions are from left to right, lowest to highest address respectively.
+		 */
 		void show(uint8_t position, uint8_t data);
 
 		/** Set the brightness of the display. */
@@ -80,7 +86,7 @@ class TM1637Display
 		// Address command.
 		static const uint8_t TM1637_CMD2 = 0xC0;
 		// Display control command.
-		static const uint8_t TM1637_CMD3 = 0x80;
+		static const uint8_t TM1637_CMD3 = 0x88;
 };
 
 #endif

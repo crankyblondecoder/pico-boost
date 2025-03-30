@@ -104,6 +104,8 @@ uint8_t TM1637Display::__writeByte(uint8_t data)
 
 	// Get dio ready to read ACK.
 	gpio_set_dir(_dio, GPIO_IN);
+	// The dio pin is reported to be open drain so needs a pull up resistor to be read accurately.
+	gpio_pull_up(_dio);
 
 	// Timing diagram suggests ACK at clock low should last a full clock.
 	// Sample in the middle of that period.
@@ -226,11 +228,6 @@ uint8_t TM1637Display::encodeAlpha(char character)
 			retVal = 0x71;
 			break;
 
-		case 'g':
-		case 'G':
-			retVal = 0x6F;
-			break;
-
 		case 'h':
 		case 'H':
 			retVal = 0x76;
@@ -264,11 +261,6 @@ uint8_t TM1637Display::encodeAlpha(char character)
 		case 'r':
 		case 'R':
 			retVal = 0x50;
-			break;
-
-		case 's':
-		case 'S':
-			retVal = 0x6D;
 			break;
 
 		case 'u':
