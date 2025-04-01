@@ -1,9 +1,10 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
-#include "hardware/gpio.h"
-#include "pico/time.h"
 #include "hardware/adc.h"
+#include "hardware/gpio.h"
 #include "hardware/regs/intctrl.h"
+#include "pico/multicore.h"
+#include "pico/time.h"
 
 #include "bosch_map_0261230119.hpp"
 #include "TM1637_pico.hpp"
@@ -12,6 +13,14 @@
 #define SELECT_BUTTON_GPIO 15
 
 bool debugMsgActive = true;
+
+/**
+ * The current boost MAP sensor reading, scaled by 1000 so a float isn't required and 3 decimal places are used.
+ * It is done this way because read/write on 32bit numbers are atomic on the RP2040.
+ */
+uint32_t boostMapKpaScaled = 0;
+
+void __core1_entry();
 
 /**
  * Program for Pi Pico that interfaces to cars electrical signals and can either provide data to another display system
@@ -30,6 +39,11 @@ int main()
 
 	// Setup ADC.
 	adc_init();
+
+	// Push GPIO pin 23 (SMPS Mode) high to disable power saving, which causes noise in the ADC.
+	gpio_init(23);
+	gpio_set_dir(23, GPIO_OUT);
+	gpio_put(23, true);
 
 	// Create 4 digit display instance.
 	TM1637Display display(16, 17);
@@ -51,44 +65,46 @@ int main()
 	// Switch must connect to voltage high on being pressed for select to be triggered.
 	gpio_pull_down(SELECT_BUTTON_GPIO);
 
-	printf("Pico has initialised.\n");
-
 	bool lastSelectState = false;
 
-	// Current test display number.
-	unsigned dispNum = 0;
-	// Test display alpha.
-	char testAlpha[] = {'a', 'b', 'c', 'd', 'e', 'f', 'h', 'j', 'l', 'o', 'p', 'q', 'r', 'u', 'y'};
-	// Current test display alpha index.
-	unsigned alphaPosn = 0;
+	uint32_t last_kpa = 0;
 
-	unsigned int_kpa = 0;
+	// Display probe next render time. Stops thrashing of the display.
+	absolute_time_t nextDisplayRenderTime = get_absolute_time();
 
-	bosch_map_0261230119 mapSensor(0);
-
-	// Main processing loop.
+	// Main processing loop. Used for user interaction.
 	while(1)
 	{
-		unsigned new_int_kpa = mapSensor.readKpa();
+		absolute_time_t curTime = get_absolute_time();
 
-		if(new_int_kpa != int_kpa)
+		if(curTime >= nextDisplayRenderTime)
 		{
-			int_kpa = new_int_kpa;
+			// Approx 30fps.
+			//nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 33);-
 
-			// Peel off 3 integer digits and display.
+			nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
 
-			dispData[3] = display.encodeDigit(int_kpa % 10);
-			int_kpa /= 10;
+			if(boostMapKpaScaled != last_kpa)
+			{
+				last_kpa = boostMapKpaScaled;
 
-			dispData[2] = display.encodeDigit(int_kpa % 10);
-			int_kpa /= 10;
+				unsigned dispKpa = boostMapKpaScaled / 1000;
 
-			dispData[1] = display.encodeDigit(int_kpa % 10);
-			int_kpa /= 10;
+				// Peel off 3 integer digits and display.
 
-			dispData[0] = 0;
+				dispData[3] = display.encodeDigit(last_kpa % 10);
+				last_kpa /= 10;
 
-			display.show(dispData);
+				dispData[2] = display.encodeDigit(last_kpa % 10);
+				last_kpa /= 10;
+
+				dispData[1] = display.encodeDigit(last_kpa % 10);
+				last_kpa /= 10;
+
+				dispData[0] = 0;
+
+				display.show(dispData);
+			}
 		}
 
 		bool selectButtonState = gpio_get(SELECT_BUTTON_GPIO);
@@ -101,6 +117,27 @@ int main()
 			{
 
 			}
+		}
+	}
+}
+
+void __core1_entry()
+{
+	// Start map sensor on ADC Channel 0. This should map to GP26.
+	bosch_map_0261230119 boostMapSensor(0);
+
+	absolute_time_t nextBoostReadTime = get_absolute_time();
+
+	while(1)
+	{
+		absolute_time_t curTime = get_absolute_time();
+
+		if(curTime >= nextBoostReadTime)
+		{
+			// Approximately 100hz
+			nextBoostReadTime = delayed_by_ms(nextBoostReadTime, 10);
+
+			boostMapKpaScaled = boostMapSensor.readKpa() * 1000.0;
 		}
 	}
 }
