@@ -14,6 +14,9 @@
 
 bool debugMsgActive = true;
 
+// Debug flag to get around timers being a pain.
+bool debug = false;
+
 /**
  * The current boost MAP sensor reading, scaled by 1000 so a float isn't required and 3 decimal places are used.
  * It is done this way because read/write on 32bit numbers are atomic on the RP2040.
@@ -44,6 +47,9 @@ int main()
 	gpio_init(23);
 	gpio_set_dir(23, GPIO_OUT);
 	gpio_put(23, true);
+
+	// Start second core which will read sensor data and control the wastegate solenoid.
+	multicore_launch_core1(__core1_entry);
 
 	// Create 4 digit display instance.
 	TM1637Display display(16, 17);
@@ -77,7 +83,7 @@ int main()
 	{
 		absolute_time_t curTime = get_absolute_time();
 
-		if(curTime >= nextDisplayRenderTime)
+		if(debug || curTime >= nextDisplayRenderTime)
 		{
 			// Approx 30fps.
 			//nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 33);-
@@ -92,14 +98,14 @@ int main()
 
 				// Peel off 3 integer digits and display.
 
-				dispData[3] = display.encodeDigit(last_kpa % 10);
-				last_kpa /= 10;
+				dispData[3] = display.encodeDigit(dispKpa % 10);
+				dispKpa /= 10;
 
-				dispData[2] = display.encodeDigit(last_kpa % 10);
-				last_kpa /= 10;
+				dispData[2] = display.encodeDigit(dispKpa % 10);
+				dispKpa /= 10;
 
-				dispData[1] = display.encodeDigit(last_kpa % 10);
-				last_kpa /= 10;
+				dispData[1] = display.encodeDigit(dispKpa % 10);
+				dispKpa /= 10;
 
 				dispData[0] = 0;
 
@@ -132,7 +138,7 @@ void __core1_entry()
 	{
 		absolute_time_t curTime = get_absolute_time();
 
-		if(curTime >= nextBoostReadTime)
+		if(debug || curTime >= nextBoostReadTime)
 		{
 			// Approximately 100hz
 			nextBoostReadTime = delayed_by_ms(nextBoostReadTime, 10);
