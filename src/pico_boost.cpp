@@ -7,10 +7,19 @@
 #include "pico/time.h"
 
 #include "bosch_map_0261230119.hpp"
+#include "PicoSwitch.hpp"
 #include "TM1637_pico.hpp"
 
+/** Conversion factor of KPa to PSI. */
+#define KPA_TO_PSI 0.145038
+
 #define ADC_MAP_INPUT_GPIO 26
-#define SELECT_BUTTON_GPIO 15
+
+/** Up and select button. */
+#define UP_SELECT_BUTTON_GPIO 14
+
+/** Down button */
+#define DOWN_BUTTON_GPIO 15
 
 bool debugMsgActive = true;
 
@@ -24,6 +33,8 @@ bool debug = false;
 uint32_t boostMapKpaScaled = 0;
 
 void __core1_entry();
+
+bool process_options(PicoSwitch& upSelectButton, PicoSwitch& downButton, TM1637Display& display);
 
 /**
  * Program for Pi Pico that interfaces to cars electrical signals and can either provide data to another display system
@@ -48,6 +59,11 @@ int main()
 	gpio_set_dir(23, GPIO_OUT);
 	gpio_put(23, true);
 
+	// Enable on board LED (non-W)
+	gpio_init(25);
+	gpio_set_dir(25, GPIO_OUT);
+	gpio_put(25, false);
+
 	// Start second core which will read sensor data and control the wastegate solenoid.
 	multicore_launch_core1(__core1_entry);
 
@@ -65,11 +81,11 @@ int main()
 
 	display.show(dispData);
 
-	// GPIO Select mode button.
-	gpio_init(SELECT_BUTTON_GPIO);
-	gpio_set_dir(SELECT_BUTTON_GPIO, GPIO_IN);
-	// Switch must connect to voltage high on being pressed for select to be triggered.
-	gpio_pull_down(SELECT_BUTTON_GPIO);
+	// Up/Select mode button.
+	PicoSwitch selectButton(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+
+	// Down button.
+	PicoSwitch downButton(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
 	bool lastSelectState = false;
 
@@ -81,47 +97,41 @@ int main()
 	// Main processing loop. Used for user interaction.
 	while(1)
 	{
-		absolute_time_t curTime = get_absolute_time();
+		selectButton.poll();
+		downButton.poll();
 
-		if(debug || curTime >= nextDisplayRenderTime)
+		if(!process_options(selectButton, downButton, display))
 		{
-			// Approx 30fps.
-			//nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 33);-
+			// Normal non-options display is active.
+			absolute_time_t curTime = get_absolute_time();
 
-			nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
-
-			if(boostMapKpaScaled != last_kpa)
+			if(debug || curTime >= nextDisplayRenderTime)
 			{
-				last_kpa = boostMapKpaScaled;
+				// Approx 30fps.
 
-				unsigned dispKpa = boostMapKpaScaled / 1000;
+				nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
 
-				// Peel off 3 integer digits and display.
+				if(boostMapKpaScaled != last_kpa)
+				{
+					last_kpa = boostMapKpaScaled;
 
-				dispData[3] = display.encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
+					unsigned dispKpa = boostMapKpaScaled / 100;
 
-				dispData[2] = display.encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
+					// Peel off 3 integer digits and display.
 
-				dispData[1] = display.encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
+					dispData[3] = display.encodeDigit(dispKpa % 10);
+					dispKpa /= 10;
 
-				dispData[0] = 0;
+					dispData[2] = display.encodeDigit(dispKpa % 10);
+					dispKpa /= 10;
 
-				display.show(dispData);
-			}
-		}
+					dispData[1] = display.encodeDigit(dispKpa % 10);
+					dispKpa /= 10;
 
-		bool selectButtonState = gpio_get(SELECT_BUTTON_GPIO);
+					dispData[0] = display.encodeDigit(dispKpa % 10);
 
-		if(lastSelectState != selectButtonState)
-		{
-			lastSelectState = selectButtonState;
-
-			if(selectButtonState)
-			{
-
+					display.show(dispData);
+				}
 			}
 		}
 	}
@@ -130,17 +140,26 @@ int main()
 void __core1_entry()
 {
 	// Start map sensor on ADC Channel 0. This should map to GP26.
-	bosch_map_0261230119 boostMapSensor(0);
+	bosch_map_0261230119 boostMapSensor(0, 10);
 
+	absolute_time_t nextBoostLatchTime = get_absolute_time();
 	absolute_time_t nextBoostReadTime = get_absolute_time();
 
 	while(1)
 	{
 		absolute_time_t curTime = get_absolute_time();
 
+		if(debug || curTime >= nextBoostLatchTime)
+		{
+			// Latch data at approximately 1000hz
+			nextBoostLatchTime = delayed_by_ms(nextBoostLatchTime, 1);
+
+			boostMapSensor.latch();
+		}
+
 		if(debug || curTime >= nextBoostReadTime)
 		{
-			// Approximately 100hz
+			// Report data at approximately 100hz
 			nextBoostReadTime = delayed_by_ms(nextBoostReadTime, 10);
 
 			boostMapKpaScaled = boostMapSensor.readKpa() * 1000.0;
