@@ -7,6 +7,7 @@
 #include "pico/time.h"
 
 #include "bosch_map_0261230119.hpp"
+#include "pico_boost_options.hpp"
 #include "PicoSwitch.hpp"
 #include "TM1637_pico.hpp"
 
@@ -32,9 +33,15 @@ bool debug = false;
  */
 uint32_t boostMapKpaScaled = 0;
 
-void __core1_entry();
+/** The maximum boost, in Kpa, scaled by 1000. */
+uint32_t boostMaxKpaScaled = 100;
 
-bool process_options(PicoSwitch& upSelectButton, PicoSwitch& downButton, TM1637Display& display);
+/** The pressure, in Kpa, below which the boost controller is de-energised. */
+uint32_t boostDeEnergiseKpaScaled = 50;
+
+
+
+void __core1_entry();
 
 /**
  * Program for Pi Pico that interfaces to cars electrical signals and can either provide data to another display system
@@ -86,6 +93,9 @@ int main()
 
 	// Down button.
 	PicoSwitch downButton(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+
+	// Initialise the options.
+	init_options();
 
 	bool lastSelectState = false;
 
