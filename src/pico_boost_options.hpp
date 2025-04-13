@@ -4,22 +4,15 @@
 #include "PicoSwitch.hpp"
 #include "TM1637_pico.hpp"
 
-struct option
-{
-	/** Displayed character bitmap for option. */
-	uint8_t displayedCharBitmap;
-};
+// Boost options module.
+// Controls display, including when in non-options mode.
 
 /** Initialise the options. */
-void init_options();
+void boost_options_init();
 
 /**
- * Process Pico Boost options.
- * @param upSelectButton Up/Select button.
- * @param downButton down button.
- * @param display Display to use.
- * @returns True if options output to display. ie It is currently controlling the display.
+ * Boost options poll.
  */
-bool process_options(PicoSwitch& upSelectButton, PicoSwitch& downButton, TM1637Display& display);
+void boost_options_poll();
 
 #endif
