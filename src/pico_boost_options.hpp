@@ -4,6 +4,25 @@
 #include "PicoSwitch.hpp"
 #include "TM1637_pico.hpp"
 
+/** Select display value options. */
+enum SelectOption
+{
+	/** Default display. */
+	DEFAULT,
+	/** Maximum boost, in kPa. */
+	BOOST_MAX_KPA,
+	/** Boost value, in kPa, below which the wastegate solenoid is de-energised. */
+	BOOST_DE_ENERGISE_KPA,
+	/** Boost PID control, proportional constant. */
+	BOOST_PID_PROP_CONST,
+	/** Boost PID control, integration constant. */
+	BOOST_PID_INTEG_CONST,
+	/** Boost PID control, derivative constant. */
+	BOOST_PID_DERIV_CONST,
+	/** Boost control solenoid maximum duty cycle. In %. */
+	BOOST_MAX_DUTY
+};
+
 // Boost options module.
 // Controls display, including when in non-options mode.
 

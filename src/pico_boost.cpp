@@ -6,11 +6,11 @@
 #include "pico/multicore.h"
 #include "pico/time.h"
 
-#include "bosch_map_0261230119.hpp"
 #include "pico_boost_control.hpp"
 #include "pico_boost_options.hpp"
-#include "PicoSwitch.hpp"
-#include "TM1637_pico.hpp"
+
+/** The ADC channel used to get VSYS voltage. */
+#define VSYS_REF_CHANNEL 3
 
 bool debugMsgActive = true;
 

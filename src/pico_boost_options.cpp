@@ -2,8 +2,11 @@
 #include <stdio.h>
 #include "pico/time.h"
 
-#include "PicoSwitch.hpp"
-#include "TM1637_pico.hpp"
+#include "pico_boost_options.hpp"
+
+extern bool debug;
+
+extern uint32_t boost_map_kpa_scaled;
 
 /** Conversion factor of KPa to PSI. */
 #define KPA_TO_PSI 0.145038
@@ -14,72 +17,96 @@
 /** Down button */
 #define DOWN_BUTTON_GPIO 15
 
+/** Amount of time of inactivity, in milliseconds, before the current mode ends. */
+#define MODE_CHANGE_TIMEOUT = 5000;
+
+/** Amount of time, in milliseconds, that the select button must be pressed to enter edit mode. */
+#define MODE_ENTER_EDIT_TIME = 3000;
+
+/** Button for select/up operations. */
+PicoSwitch* select_up_button;
+
+/** Button for down operation. */
+PicoSwitch* down_button;
+
+/** 4 Digit display. */
+TM1637Display* display;
+
+/** Data transfered to display. */
+uint8_t disp_data[4];
+
+/** Last displayed boost value. In KPa. */
+uint32_t last_disp_kpa = 0;
+
+/** Next render time for default display. Stops flickering of the display when current boost levels fluctuate. */
+absolute_time_t nextDefaultDisplayRenderTime;
+
+/** Currently selected option. */
+enum SelectOption curSelectedOption = DEFAULT;
+
+/** Whether edit mode is active. */
+bool edit_mode = false;
+
 void boost_options_init()
 {
 	// Create 4 digit display instance.
-	TM1637Display display(16, 17);
-
-	// Display data.
-	uint8_t dispData[4];
+	display = new TM1637Display(16, 17);
 
 	// Initial display data.
-	dispData[3] = display.encodeDigit(0);
-	dispData[2] = 0;
-	dispData[1] = 0;
-	dispData[0] = 0;
+	disp_data[3] = display -> encodeDigit(0);
+	disp_data[2] = 0;
+	disp_data[1] = 0;
+	disp_data[0] = 0;
 
-	display.show(dispData);
+	display -> show(disp_data);
 
 	// Up/Select mode button.
-	PicoSwitch selectButton(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+	select_up_button = new PicoSwitch(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
 	// Down button.
-	PicoSwitch downButton(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
-	bool lastSelectState = false;
-
-	uint32_t last_kpa = 0;
-
-	// Display probe next render time. Stops thrashing of the display.
-	absolute_time_t nextDisplayRenderTime = get_absolute_time();
+	nextDefaultDisplayRenderTime = get_absolute_time();
 }
 
 void boost_options_poll()
 {
-	selectButton.poll();
-	downButton.poll();
+	// Note: Make sure the polling frequency is high enough that switches can debounce.
+	select_up_button -> poll();
+	down_button -> poll();
 
-	if(!process_options(selectButton, downButton, display))
+	// Normal non-options display is active.
+	absolute_time_t curTime = get_absolute_time();
+
+	if(curSelectedOption == DEFAULT)
 	{
-		// Normal non-options display is active.
-		absolute_time_t curTime = get_absolute_time();
-
-		if(debug || curTime >= nextDisplayRenderTime)
+		if(debug || curTime >= nextDefaultDisplayRenderTime)
 		{
 			// Approx 30fps.
 
-			nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
+			nextDefaultDisplayRenderTime = delayed_by_ms(nextDefaultDisplayRenderTime, 200);
 
-			if(boostMapKpaScaled != last_kpa)
+			if(boost_map_kpa_scaled != last_disp_kpa)
 			{
-				last_kpa = boostMapKpaScaled;
+				last_disp_kpa = boost_map_kpa_scaled;
 
-				unsigned dispKpa = boostMapKpaScaled / 100;
+				// Show kpa with 1 decimal point.
+				unsigned dispKpa = boost_map_kpa_scaled / 100;
 
 				// Peel off 3 integer digits and display.
 
-				dispData[3] = display.encodeDigit(dispKpa % 10);
+				disp_data[3] = display -> encodeDigit(dispKpa % 10);
 				dispKpa /= 10;
 
-				dispData[2] = display.encodeDigit(dispKpa % 10);
+				disp_data[2] = display -> encodeDigit(dispKpa % 10);
 				dispKpa /= 10;
 
-				dispData[1] = display.encodeDigit(dispKpa % 10);
+				disp_data[1] = display -> encodeDigit(dispKpa % 10);
 				dispKpa /= 10;
 
-				dispData[0] = display.encodeDigit(dispKpa % 10);
+				disp_data[0] = display -> encodeDigit(dispKpa % 10);
 
-				display.show(dispData);
+				display -> show(disp_data);
 			}
 		}
 	}

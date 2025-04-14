@@ -11,10 +11,12 @@ pico_sdk_init()
 
 # Add extra source files here.
 add_executable(pico_boost
+	AdcReader.cpp
+	BoschMap_0261230119.cpp
 	pico_boost.cpp
 	pico_boost_options.cpp
 	pico_boost_control.cpp
-	bosch_map_0261230119.cpp
+	PicoAdcReader.cpp
 	PicoSwitch.cpp
 	TM1637_pico.cpp)
 
