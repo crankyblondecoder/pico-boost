@@ -39,6 +39,15 @@ class TM1637Display
 		uint8_t encodeDigit(unsigned digit);
 
 		/**
+		 * Encode a base 10 number into the given data buffer.
+		 * @param number Number to encode.
+		 * @param numDigits Number of digits to encode.
+		 * @param startPosn Array index of lowest order digit.
+		 * @param data Array of length 4 to encode number into. Lowest order digit goes into highest array address.
+		 */
+		void encodeNumber(unsigned number, unsigned numDigits, unsigned startPosn, uint8_t data[4]);
+
+		/**
 		 * Generate segment bitmap for a single characer.
 		 * @note Not all characters can be encoded and only a single character will be encoded for any given case.
 		 */

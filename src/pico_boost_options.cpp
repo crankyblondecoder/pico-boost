@@ -42,10 +42,12 @@ uint32_t last_disp_kpa = 0;
 absolute_time_t nextDefaultDisplayRenderTime;
 
 /** Currently selected option. */
-enum SelectOption curSelectedOption = DEFAULT;
+enum SelectOption curSelectedOption = CURRENT_BOOST;
 
 /** Whether edit mode is active. */
 bool edit_mode = false;
+
+void _display_default();
 
 void boost_options_init()
 {
@@ -78,36 +80,59 @@ void boost_options_poll()
 	// Normal non-options display is active.
 	absolute_time_t curTime = get_absolute_time();
 
-	if(curSelectedOption == DEFAULT)
+	switch(curSelectedOption)
 	{
-		if(debug || curTime >= nextDefaultDisplayRenderTime)
+		case CURRENT_BOOST:
+
+			_display_default();
+			break;
+
+		case BOOST_MAX_KPA:
+
+
+		case BOOST_DE_ENERGISE_KPA:
+
+			break;
+
+		case BOOST_PID_PROP_CONST:
+
+			break;
+
+		case BOOST_PID_INTEG_CONST:
+
+			break;
+
+		case BOOST_PID_DERIV_CONST:
+
+			break;
+
+		case BOOST_MAX_DUTY:
+
+			break;
+	}
+}
+
+void _display_default()
+{
+	absolute_time_t curTime = get_absolute_time();
+
+	if(debug || curTime >= nextDefaultDisplayRenderTime)
+	{
+		// Approx 30fps.
+
+		nextDefaultDisplayRenderTime = delayed_by_ms(nextDefaultDisplayRenderTime, 200);
+
+		if(boost_map_kpa_scaled != last_disp_kpa)
 		{
-			// Approx 30fps.
+			last_disp_kpa = boost_map_kpa_scaled;
 
-			nextDefaultDisplayRenderTime = delayed_by_ms(nextDefaultDisplayRenderTime, 200);
+			// Show kpa with 0 decimal points.
+			unsigned dispKpa = boost_map_kpa_scaled / 1000;
 
-			if(boost_map_kpa_scaled != last_disp_kpa)
-			{
-				last_disp_kpa = boost_map_kpa_scaled;
+			// Display just 3 digits of kPa value.
+			display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-				// Show kpa with 1 decimal point.
-				unsigned dispKpa = boost_map_kpa_scaled / 100;
-
-				// Peel off 3 integer digits and display.
-
-				disp_data[3] = display -> encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
-
-				disp_data[2] = display -> encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
-
-				disp_data[1] = display -> encodeDigit(dispKpa % 10);
-				dispKpa /= 10;
-
-				disp_data[0] = display -> encodeDigit(dispKpa % 10);
-
-				display -> show(disp_data);
-			}
+			display -> show(disp_data);
 		}
 	}
 }

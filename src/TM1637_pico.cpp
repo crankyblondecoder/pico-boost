@@ -192,6 +192,21 @@ uint8_t TM1637Display::encodeDigit(unsigned digit)
 	return _digitToSegment[digit];
 }
 
+void TM1637Display::encodeNumber(unsigned number, unsigned numDigits, unsigned startPosn, uint8_t data[4])
+{
+	int curEncodePosn = startPosn > 3 ? 3 : startPosn;
+	unsigned digitCount = numDigits > 4 ? 4 : numDigits;
+
+	while(curEncodePosn >= 0 && digitCount > 0)
+	{
+		data[curEncodePosn] = encodeDigit(number % 10);
+
+		number /= 10;
+		curEncodePosn--;
+		digitCount--;
+	}
+}
+
 uint8_t TM1637Display::encodeAlpha(char character)
 {
 	uint8_t retVal = 0;

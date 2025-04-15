@@ -7,8 +7,8 @@
 /** Select display value options. */
 enum SelectOption
 {
-	/** Default display. */
-	DEFAULT,
+	/** Current boost in the solenoid energised region. */
+	CURRENT_BOOST,
 	/** Maximum boost, in kPa. */
 	BOOST_MAX_KPA,
 	/** Boost value, in kPa, below which the wastegate solenoid is de-energised. */
