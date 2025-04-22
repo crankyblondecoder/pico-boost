@@ -66,8 +66,18 @@ void PicoSwitch::poll()
 
 		if(_currentState != curState)
 		{
+			if(curState)
+			{
+				_stateCycleCounter++;
+			}
+			else
+			{
+				_lastPressDuration = absolute_time_diff_us(_curStateTime, curTime) / 1000;
+			}
+
 			_currentState = curState;
 			_curStateTime = curTime;
+
 		}
 	}
 }
@@ -77,7 +87,17 @@ bool PicoSwitch::getSwitchState()
 	return _currentState;
 }
 
-int64_t PicoSwitch::getSwitchStateDuration()
+unsigned PicoSwitch::getSwitchStateDuration()
 {
-	return absolute_time_diff_us(_curStateTime, get_absolute_time());
+	return absolute_time_diff_us(_curStateTime, get_absolute_time()) / 1000;
+}
+
+unsigned PicoSwitch::getCurrentStateCycleIndex()
+{
+	return _stateCycleCounter;
+}
+
+unsigned PicoSwitch::getLastPressDuration()
+{
+	return _lastPressDuration;
 }

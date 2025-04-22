@@ -37,6 +37,9 @@ uint32_t boost_max_duty = 100;
 absolute_time_t next_boost_latch_time;
 absolute_time_t next_boost_read_time;
 
+/** Current energised state of the boost control solenoid. Does NOT include 0% duty cycle. */
+bool energised = false;
+
 extern bool debug;
 
 void boost_control_init()
@@ -70,4 +73,14 @@ void boost_control_poll()
 
 		boost_map_kpa_scaled = boost_map_sensor -> readKpa() * 1000.0;
 	}
+}
+
+bool is_de_energised()
+{
+	return energised;
+}
+
+bool max_boost_reached()
+{
+	return boost_map_kpa_scaled >= boost_max_kpa_scaled;
 }

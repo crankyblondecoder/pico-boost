@@ -20,7 +20,9 @@ enum SelectOption
 	/** Boost PID control, derivative constant. */
 	BOOST_PID_DERIV_CONST,
 	/** Boost control solenoid maximum duty cycle. In %. */
-	BOOST_MAX_DUTY
+	BOOST_MAX_DUTY,
+	/** Not an option, just used to indicate enum length. */
+	SELECT_OPTION_LAST
 };
 
 // Boost options module.

@@ -37,9 +37,22 @@ class PicoSwitch
 		bool getSwitchState();
 
 		/**
-		 * Get the amount of time the switch has stayed in its current state.
+		 * Get the amount of time the switch has stayed in its current state. In milliseconds.
 		 */
-		int64_t getSwitchStateDuration();
+		unsigned getSwitchStateDuration();
+
+		/**
+		 * Get the current state cycle index. This is the index of the switch press as the start of the switch
+		 * press/release cycle.
+		 * @returns Cycle index number. 0 indicates that no cycle has begun yet.
+		 */
+		unsigned getCurrentStateCycleIndex();
+
+		/**
+		 * Get the duration of the last complete switch press, in milliseconds.
+		 * ie This does not cover any currently incomplete switch press state.
+		 */
+		unsigned getLastPressDuration();
 
 	private:
 
@@ -64,11 +77,17 @@ class PicoSwitch
 		/** The time of the last sample. */
 		absolute_time_t _lastSampleTime;
 
-		/** Current switch state. */
+		/** Current switch state. True for pressed, false for not pressed (released). */
 		bool _currentState = false;
 
-		/** The time the current state became definite. ie Either active count maxed out or became zero. */
+		/** The time the current switch (pressed/released) state became definite. */
 		absolute_time_t _curStateTime;
+
+		/** Counter used to indicate a unique instance of the the start of the "leading edge" of a switch press. */
+		unsigned _stateCycleCounter = 0;
+
+		/** The duration of the last switch press, in milliseconds. Does not contain the duration of the current state. */
+		unsigned _lastPressDuration = 0;
 };
 
 #endif
