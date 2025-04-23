@@ -7,8 +7,6 @@
 
 extern bool debug;
 
-extern uint32_t boost_map_kpa_scaled;
-
 /** Conversion factor of KPa to PSI. */
 #define KPA_TO_PSI 0.145038
 
@@ -47,9 +45,6 @@ TM1637Display* display;
 /** Data transfered to display. */
 uint8_t disp_data[4];
 
-/** Last displayed boost value. In KPa. */
-uint32_t last_disp_kpa = 0;
-
 /** Next render time for display. Stops flickering of the display when values change rapidly. */
 absolute_time_t nextDisplayRenderTime;
 
@@ -65,7 +60,8 @@ unsigned last_edit_fast_mode_up_duration = 0;
 /** During edit mode fast mode, the last down switch duration that was acted upon. */
 unsigned last_edit_fast_mode_down_duration = 0;
 
-void _display_default();
+void display_current_boost();
+void display_max_boost();
 
 // Display character mapping
 // -------------------------
@@ -137,7 +133,7 @@ void boost_options_process_switches()
 					// Rate limit fast edit mode.
 					if(upDuration - last_edit_fast_mode_up_duration > EDIT_MODE_FAST_REPEAT_RATE)
 					{
-						delta = 10;
+						delta = 5;
 						last_edit_fast_mode_up_duration = upDuration;
 					}
 				}
@@ -169,33 +165,42 @@ void boost_options_process_switches()
 
 			if(delta != 0)
 			{
-				// TODO ... Apply delta to boost control.
-				blah;
-
 				switch(cur_selected_option)
 				{
 					case BOOST_MAX_KPA:
 
+						// Max kPa is scaled by 1000. Resolution 1.
+						boost_alter_max_kpa(delta * 1000);
 						break;
 
 					case BOOST_DE_ENERGISE_KPA:
 
+						// De-energise is scaled by 1000. Resolution 1.
+						boost_alter_de_energise_kpa_scaled(delta * 1000);
 						break;
 
 					case BOOST_PID_PROP_CONST:
 
+						// PID proportional constant is scaled by 1000. Resolution 0.01.
+						boost_alter_pid_prop_const_scaled(delta * 10);
 						break;
 
 					case BOOST_PID_INTEG_CONST:
 
+						// PID integration constant is scaled by 1000. Resolution 0.01.
+						boost_alter_pid_integ_const_scaled(delta * 10);
 						break;
 
 					case BOOST_PID_DERIV_CONST:
 
+						// PID derivative constant is scaled by 1000. Resolution 0.01.
+						boost_alter_pid_deriv_const_scaled(delta * 10);
 						break;
 
 					case BOOST_MAX_DUTY:
 
+						// Boost solenoid maximum duty cycle. Resolution 1.
+						boost_alter_max_duty(delta);
 						break;
 				}
 			}
@@ -241,14 +246,14 @@ void boost_options_poll()
 
 	if(debug || curTime >= nextDisplayRenderTime)
 	{
-		// Approx 30fps.
+		// Limit the frame rate so the display doesn't "strobe".
 		nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
 
 		switch(cur_selected_option)
 		{
 			case CURRENT_BOOST:
 
-				_display_default();
+				display_current_boost();
 				break;
 
 			case BOOST_MAX_KPA:
@@ -277,18 +282,15 @@ void boost_options_poll()
 	}
 }
 
-void _display_default()
+void display_current_boost()
 {
-	if(boost_map_kpa_scaled != last_disp_kpa)
-	{
-		last_disp_kpa = boost_map_kpa_scaled;
+	unsigned boost_kpa_scaled = boost_get_kpa_scaled();
 
-		// Show kpa with 0 decimal points.
-		unsigned dispKpa = boost_map_kpa_scaled / 1000;
+	// Show kpa with 0 decimal points.
+	unsigned dispKpa = boost_kpa_scaled / 1000;
 
-		// Display just 3 digits of kPa value.
-		display -> encodeNumber(dispKpa, 3, 3, disp_data);
-	}
+	// Display just 3 digits of kPa value.
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
 	if(boost_control_max_boost_reached())
 	{
@@ -302,6 +304,21 @@ void _display_default()
 	{
 		disp_data[0] = 0;
 	}
+
+	display -> show(disp_data);
+}
+
+void display_max_boost()
+{
+	unsigned boost_max_kpa_scaled = boost_get_max_kpa();
+
+	// Show max kpa with 0 decimal points.
+	unsigned dispKpa = boost_max_kpa_scaled / 1000;
+
+	// Display just 3 digits of kPa value.
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('B');
 
 	display -> show(disp_data);
 }

@@ -5,6 +5,9 @@
 
 #include "pico_boost_control.hpp"
 
+/** Standard atmospheric pressure in Pascals. */
+#define STD_ATM_PRESSURE 101325
+
 /** Bosch map sensor to read current turbo pressure from. */
 BoschMap_0261230119* boost_map_sensor;
 
@@ -83,4 +86,56 @@ bool is_de_energised()
 bool max_boost_reached()
 {
 	return boost_map_kpa_scaled >= boost_max_kpa_scaled;
+}
+
+unsigned boost_get_kpa_scaled()
+{
+	return boost_map_kpa_scaled - STD_ATM_PRESSURE;
+}
+
+unsigned boost_get_max_kpa()
+{
+	return boost_max_kpa_scaled;
+}
+
+void boost_alter_max_kpa(int maxBoostKpaScaledDelta)
+{
+	int newVal = (int)boost_max_kpa_scaled + maxBoostKpaScaledDelta;
+
+	if(newVal > 0) boost_max_kpa_scaled = newVal; else boost_max_kpa_scaled = 0;
+}
+
+void boost_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
+{
+	int newVal = (int)boost_de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
+
+	if(newVal > 0) boost_de_energise_kpa_scaled = newVal; else boost_de_energise_kpa_scaled = 0;
+}
+
+void boost_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
+{
+	int newVal = (int)boost_pid_prop_const_scaled + pidPropConstScaledDelta;
+
+	if(boost_pid_prop_const_scaled < 0) boost_pid_prop_const_scaled = 0;
+}
+
+void boost_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
+{
+	int newVal = (int)boost_pid_integ_const_scaled + pidIntegConstScaledDelta;
+
+	if(newVal > 0) boost_pid_integ_const_scaled = newVal; else boost_pid_integ_const_scaled = 0;
+}
+
+void boost_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
+{
+	int newVal = (int)boost_pid_deriv_const_scaled + pidDerivConstScaledDelta;
+
+	if(newVal > 0) boost_pid_deriv_const_scaled = newVal; else boost_pid_deriv_const_scaled = 0;
+}
+
+void boost_alter_max_duty(int maxDutyDelta)
+{
+	int newVal = (int)boost_max_duty + maxDutyDelta;
+
+	if(newVal > 0) boost_max_duty = newVal; else boost_max_duty = 0;
 }
