@@ -62,6 +62,11 @@ unsigned last_edit_fast_mode_down_duration = 0;
 
 void display_current_boost();
 void display_max_boost();
+void display_boost_de_energise();
+void display_boost_pid_prop_const();
+void display_boost_pid_integ_const();
+void display_boost_pid_deriv_const();
+void display_boost_max_duty();
 
 // Display character mapping
 // -------------------------
@@ -170,37 +175,37 @@ void boost_options_process_switches()
 					case BOOST_MAX_KPA:
 
 						// Max kPa is scaled by 1000. Resolution 1.
-						boost_alter_max_kpa(delta * 1000);
+						boost_control_alter_max_kpa_scaled(delta * 1000);
 						break;
 
 					case BOOST_DE_ENERGISE_KPA:
 
 						// De-energise is scaled by 1000. Resolution 1.
-						boost_alter_de_energise_kpa_scaled(delta * 1000);
+						boost_control_alter_de_energise_kpa_scaled(delta * 1000);
 						break;
 
 					case BOOST_PID_PROP_CONST:
 
 						// PID proportional constant is scaled by 1000. Resolution 0.01.
-						boost_alter_pid_prop_const_scaled(delta * 10);
+						boost_control_alter_pid_prop_const_scaled(delta * 10);
 						break;
 
 					case BOOST_PID_INTEG_CONST:
 
 						// PID integration constant is scaled by 1000. Resolution 0.01.
-						boost_alter_pid_integ_const_scaled(delta * 10);
+						boost_control_alter_pid_integ_const_scaled(delta * 10);
 						break;
 
 					case BOOST_PID_DERIV_CONST:
 
 						// PID derivative constant is scaled by 1000. Resolution 0.01.
-						boost_alter_pid_deriv_const_scaled(delta * 10);
+						boost_control_alter_pid_deriv_const_scaled(delta * 10);
 						break;
 
 					case BOOST_MAX_DUTY:
 
 						// Boost solenoid maximum duty cycle. Resolution 1.
-						boost_alter_max_duty(delta);
+						boost_control_alter_max_duty(delta);
 						break;
 				}
 			}
@@ -258,25 +263,32 @@ void boost_options_poll()
 
 			case BOOST_MAX_KPA:
 
+				display_max_boost();
+				break;
 
 			case BOOST_DE_ENERGISE_KPA:
 
+				display_boost_de_energise();
 				break;
 
 			case BOOST_PID_PROP_CONST:
 
+				display_boost_pid_prop_const();
 				break;
 
 			case BOOST_PID_INTEG_CONST:
 
+				display_boost_pid_integ_const();
 				break;
 
 			case BOOST_PID_DERIV_CONST:
 
+				display_boost_pid_deriv_const();
 				break;
 
 			case BOOST_MAX_DUTY:
 
+				display_boost_max_duty();
 				break;
 		}
 	}
@@ -284,7 +296,7 @@ void boost_options_poll()
 
 void display_current_boost()
 {
-	unsigned boost_kpa_scaled = boost_get_kpa_scaled();
+	unsigned boost_kpa_scaled = boost_control_get_kpa_scaled();
 
 	// Show kpa with 0 decimal points.
 	unsigned dispKpa = boost_kpa_scaled / 1000;
@@ -310,7 +322,7 @@ void display_current_boost()
 
 void display_max_boost()
 {
-	unsigned boost_max_kpa_scaled = boost_get_max_kpa();
+	unsigned boost_max_kpa_scaled = boost_control_get_max_kpa_scaled();
 
 	// Show max kpa with 0 decimal points.
 	unsigned dispKpa = boost_max_kpa_scaled / 1000;
@@ -319,6 +331,77 @@ void display_max_boost()
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
 	disp_data[0] = display -> encodeAlpha('B');
+
+	display -> show(disp_data);
+}
+
+void display_boost_de_energise()
+{
+	unsigned boost_de_energised_scaled = boost_control_get_de_energise_kpa_scaled();
+
+	// Show with 0 decimal points.
+	unsigned dispKpa = boost_de_energised_scaled / 1000;
+
+	// Display just 3 digits of kPa value.
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('U');
+
+	display -> show(disp_data);
+}
+
+void display_boost_pid_prop_const()
+{
+	unsigned boost_pid_prop_scaled = boost_control_get_pid_prop_const_scaled();
+
+	// Show with 2 decimal points.
+	unsigned dispKpa = boost_pid_prop_scaled / 10;
+
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('P');
+
+	display -> show(disp_data);
+}
+
+void display_boost_pid_integ_const()
+{
+	unsigned boost_pid_integ_scaled = boost_control_get_pid_integ_const_scaled();
+
+	// Show with 2 decimal points.
+	unsigned dispKpa = boost_pid_integ_scaled / 10;
+
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('S');
+
+	display -> show(disp_data);
+}
+
+void display_boost_pid_deriv_const()
+{
+	unsigned boost_pid_deriv_scaled = boost_control_get_pid_deriv_const_scaled();
+
+	// Show with 2 decimal points.
+	unsigned dispKpa = boost_pid_deriv_scaled / 10;
+
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('D');
+
+	display -> show(disp_data);
+}
+
+void display_boost_max_duty()
+{
+	unsigned boost_max_duty = boost_control_get_max_duty();
+
+	// Show with 0 decimal points.
+	unsigned dispVal = boost_max_duty;
+
+	display -> encodeNumber(dispVal, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('Q');
 
 	display -> show(disp_data);
 }

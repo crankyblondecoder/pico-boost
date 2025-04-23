@@ -78,62 +78,91 @@ void boost_control_poll()
 	}
 }
 
-bool is_de_energised()
+bool boost_control_is_energised()
 {
 	return energised;
 }
 
-bool max_boost_reached()
+bool boost_control_max_boost_reached()
 {
 	return boost_map_kpa_scaled >= boost_max_kpa_scaled;
 }
 
-unsigned boost_get_kpa_scaled()
+unsigned boost_control_get_kpa_scaled()
 {
-	return boost_map_kpa_scaled - STD_ATM_PRESSURE;
+	int retVal = boost_map_kpa_scaled - STD_ATM_PRESSURE;
+
+	if(retVal > 0) return retVal;
+
+	return 0;
 }
 
-unsigned boost_get_max_kpa()
+unsigned boost_control_get_max_kpa_scaled()
 {
 	return boost_max_kpa_scaled;
 }
 
-void boost_alter_max_kpa(int maxBoostKpaScaledDelta)
+void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta)
 {
 	int newVal = (int)boost_max_kpa_scaled + maxBoostKpaScaledDelta;
 
 	if(newVal > 0) boost_max_kpa_scaled = newVal; else boost_max_kpa_scaled = 0;
 }
 
-void boost_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
+unsigned boost_control_get_de_energise_kpa_scaled()
+{
+	return boost_de_energise_kpa_scaled;
+}
+
+void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
 {
 	int newVal = (int)boost_de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
 
 	if(newVal > 0) boost_de_energise_kpa_scaled = newVal; else boost_de_energise_kpa_scaled = 0;
 }
 
-void boost_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
+unsigned boost_control_get_pid_prop_const_scaled()
+{
+	return boost_pid_prop_const_scaled;
+}
+
+void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 {
 	int newVal = (int)boost_pid_prop_const_scaled + pidPropConstScaledDelta;
 
-	if(boost_pid_prop_const_scaled < 0) boost_pid_prop_const_scaled = 0;
+	if(newVal < 0) boost_pid_prop_const_scaled = 0;
 }
 
-void boost_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
+unsigned boost_control_get_pid_integ_const_scaled()
+{
+	return boost_pid_integ_const_scaled;
+}
+
+void boost_control_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
 {
 	int newVal = (int)boost_pid_integ_const_scaled + pidIntegConstScaledDelta;
 
 	if(newVal > 0) boost_pid_integ_const_scaled = newVal; else boost_pid_integ_const_scaled = 0;
 }
 
-void boost_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
+unsigned boost_control_get_pid_deriv_const_scaled()
+{
+	return boost_pid_deriv_const_scaled;
+}
+
+void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 {
 	int newVal = (int)boost_pid_deriv_const_scaled + pidDerivConstScaledDelta;
 
 	if(newVal > 0) boost_pid_deriv_const_scaled = newVal; else boost_pid_deriv_const_scaled = 0;
 }
 
-void boost_alter_max_duty(int maxDutyDelta)
+unsigned boost_control_get_max_duty()
+{
+	return boost_max_duty;
+}
+
+void boost_control_alter_max_duty(int maxDutyDelta)
 {
 	int newVal = (int)boost_max_duty + maxDutyDelta;
 
