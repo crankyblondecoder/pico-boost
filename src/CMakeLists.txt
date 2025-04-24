@@ -34,4 +34,5 @@ target_link_libraries(pico_boost
 	pico_platform
 	hardware_adc
 	hardware_clocks
-	hardware_gpio)
+	hardware_gpio
+	hardware_i2c)

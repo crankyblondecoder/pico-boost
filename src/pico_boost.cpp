@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
+#include "hardware/i2c.h"
 #include "hardware/regs/intctrl.h"
 #include "pico/multicore.h"
 #include "pico/time.h"
@@ -11,6 +12,12 @@
 
 /** The ADC channel used to get VSYS voltage. */
 #define VSYS_REF_CHANNEL 3
+
+/** The GPIO pin used for i2c bus 0 SDA (data) line. */
+#define I2C_BUS0_SDA_GPIO 12
+
+/** The GPIO pin used for i2c bus 0 SCL (clock) line. */
+#define I2C_BUS0_SCL_GPIO 13
 
 bool debugMsgActive = true;
 
@@ -41,6 +48,20 @@ int main()
 	gpio_init(23);
 	gpio_set_dir(23, GPIO_OUT);
 	gpio_put(23, true);
+
+	// Setup i2c bus 0.
+	// Note: i2c is open drain so it requires pull up resistors on both pins.
+	// Note: i2c_write_timeout_us can be used for multiple bytes. Be aware of page size write limits on the chip.
+	// Note: i2c_read_timeout_us can be used for multiple bytes. Be aware of page size write limits on the chip.
+	i2c_init(i2c0, 400000);
+
+	gpio_init(I2C_BUS0_SDA_GPIO);
+    gpio_set_function(I2C_BUS0_SDA_GPIO, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_BUS0_SDA_GPIO);
+
+    gpio_init(I2C_BUS0_SCL_GPIO);
+    gpio_set_function(I2C_BUS0_SCL_GPIO, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_BUS0_SCL_GPIO);
 
 	// Initialise the options module. Do this first so that boost control variables are set.
 	boost_options_init();
