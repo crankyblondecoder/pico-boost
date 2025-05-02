@@ -3,6 +3,8 @@
 Eeprom::~Eeprom()
 {
 	if(_pages) delete[] _pages;
+	if(_curWearIndexes) delete[] _curWearIndexes;
+	if(_curWearPage) delete[] _curWearPage;
 }
 
 Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
@@ -11,14 +13,20 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 	_pages = 0;
 	_pageCount = pageCount;
 
+	_curWearIndexes = 0;
+	_curWearPage = 0;
+
 	// Total amount allocated to pages region. Includes page counters.
 	unsigned totalAlloc;
 
 	if(pageCount > 0)
 	{
-		// Copy the given pages.
+		// Copy the given pages and setup the current wear index arrays.
 
 		_pages = new EepromPage[pageCount];
+
+		_curWearIndexes = new uint16_t[pageCount];
+		_curWearPage = new uint16_t[pageCount];
 
 		for(unsigned index = 0; index < pageCount; index++)
 		{
@@ -26,6 +34,8 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 			_pages[index].wearCount = pages[index].wearCount & 0x7FFF;
 
 			totalAlloc += _pages[index].wearCount * (_pages[index].pageSize + 2);
+
+			_curWearIndexes[index] = 0;
 		}
 	}
 
@@ -39,6 +49,8 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 
 	if(magic == EEPROM_MAGIC)
 	{
+		// Check for header matching expected pages.
+
 		uint8_t headerPageCount;
 		_readBytes(1, &headerPageCount, 1);
 
@@ -47,18 +59,40 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 			uint8_t headerPageSize;
 			uint16_t headerWearCount;
 
+			headerMatches = true;
+
+			uint32_t curAddr = EEPROM_PAGE_COUNT_ADDR + 1;
+
 			for(unsigned index = 0; index < pageCount; index++)
 			{
-				_readBytes(1, &headerPageSize, 1);
+				_readBytes(curAddr++, &headerPageSize, 1);
+				// This is fine as long a everything is little endian.
+				_readBytes(curAddr, (uint8_t*)&headerWearCount, 2);
 
-				// TODO ...
+				curAddr += 2;
+
+				// Compare to expected page.
+				if(headerPageSize != _pages[index].pageSize || headerWearCount != _pages[index].wearCount)
+				{
+					headerMatches = false;
+					break;
+				}
 			}
 		}
 	}
 
 	if(headerMatches)
 	{
-		// TODO ... Get the current wear counter of all pages.
+		// TODO ... Get the current wear index of all pages.
+		for(unsigned index = 0; index < pageCount; index++)
+		{
+			uint8_t pageSize = _pages[index].pageSize;
+			uint16_t wearCount = _pages[index].wearCount;
+
+			uint32_t pageAllocSize = pageSize * (wearCount + 2);
+
+
+		}
 	}
 	else
 	{
@@ -66,10 +100,35 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 		magic = EEPROM_MAGIC;
 		_writeBytes(0, &magic, 1);
 
-		// TODO ... Write the page count to the header.
+		// Write the page count to the header.
+		_writeBytes(EEPROM_PAGE_COUNT_ADDR, &_pageCount, 1);
 
-		// TODO ... Write the pages info to the header.
+		// Write the pages info to the header.
+		uint32_t curHeaderAddr = EEPROM_PAGE_COUNT_ADDR + 1;
 
-		// TODO ... Clear the pages region.
+		// Start of the actual page that corresponds to the current page header being written.
+		uint32_t curPageAddr = curHeaderAddr + pageCount * 3;
+
+		for(unsigned index = 0; index < pageCount; index++)
+		{
+			uint8_t pageSize = _pages[index].pageSize;
+			uint16_t wearCount = _pages[index].wearCount;
+
+			_writeBytes(curHeaderAddr++, &pageSize, 1);
+			// This is fine as long a everything is little endian.
+			_writeBytes(curHeaderAddr, (uint8_t*)&wearCount, 2);
+
+			// Clear the pages region.
+			uint32_t pageAllocSize = pageSize * (wearCount + 2);
+			_clear(0xFF, curPageAddr, pageAllocSize);
+
+			// Calc next page start.
+			curPageAddr += pageAllocSize;
+		}
 	}
+}
+
+void Eeprom::clear(uint8_t value, unsigned start, unsigned count)
+{
+	_clear(value, start, count);
 }
