@@ -25,8 +25,35 @@ struct EepromPage
 };
 
 /**
+ * This keeps track of the current page instance as well as other data required to process them.
+ * A page instance is a particular wear levelled page in the page wear levelling region (The region where multiple indexed
+ * copies of the same page are stored).
+ */
+struct EepromPageInstance
+{
+	/**
+	 * Wear index associated with page. This starts at 1 for valid indexes and increases as pages are written on a
+	 * per page definition basis.
+	 * A value of 0 indicates that there are no pages present for the associated page description.
+	 */
+	uint16_t wearIndex;
+
+	/**
+	 * The physical page index the page instance is stored in.
+	 * This will be between 0 and wearCount - 1 (from the page definition).
+	 */
+	uint16_t pageIndex;
+
+	/**
+	 * The byte address of the start of the wear levelled region for the page.
+	 */
+	uint32_t regionStartAddress;
+};
+
+/**
  * Base of drivers for EEPROM chips.
  * @note All data is stored using little endian byte order and the Pico is assumed to be running in little endian mode.
+ * @note This class does _not_ do any bounds checks.
  */
 class Eeprom
 {
@@ -47,16 +74,16 @@ class Eeprom
 		/**
 		 * Read wear balanced page from Eeprom.
 		 * @param pageId Identifier of page to read. This should match the index of the pages defined during construction.
-		 * @param page Pointer to buffer to read page data into. Must be page length in size.
+		 * @param pageBuffer Pointer to buffer to read page data into. Must be page length in size.
 		 */
-		void readPage(uint8_t pageId, uint8_t* page);
+		void readPage(uint8_t pageId, uint8_t* pageBuffer);
 
 		/**
 		 * Write wear balanced page to Eeprom.
 		 * @param pageId Identifier of page to write. This should match the index of the pages defined during construction.
-		 * @param page Pointer to page data to write. Must be page length in size.
+		 * @param pageData Pointer to page data to write. Must be page length in size.
 		 */
-		void writePage(uint8_t pageId, uint8_t* page);
+		void writePage(uint8_t pageId, uint8_t* pageData);
 
 		/**
 		 * Clear the Eeprom to the given value for the given region.
@@ -65,6 +92,12 @@ class Eeprom
 		 * @param count Number of bytes to set.
 		 */
 		void clear(uint8_t value, unsigned start, unsigned count);
+
+		/**
+		 * Get the start address of the non-paged region.
+		 * This is always after the paged region. ie At a higher address.
+		 */
+		uint32_t getNonPageRegionStartAddress();
 
 	protected:
 
@@ -103,21 +136,11 @@ class Eeprom
 		/** Number of wear levelled pages. */
 		uint8_t _pageCount;
 
-		/**
-		 * Current wear indexes.
-		 * Array indexes match page indexes.
-		 * A value of 0 is the null index. ie Indicates no pages currently present.
-		 * @note A wear index of 0xFFFF physically present indicates a blank region and isn't a valid wear index. It will
-		 *       never be present in this array.
-		 */
-		uint16_t* _curWearIndexes;
+		/** Current page instances. The index matches the indexes of the page definitions. */
+		EepromPageInstance* _pageInstances;
 
-		/**
-		 * Current wear pages.
-		 * Array indexes match page indexes.
-		 * The value is the page index that holds the current page data. It is clamped to being less than the wear count.
-		 */
-		uint16_t* _curWearPage;
+		/** The start address of the non-page region. The region after the wear levelled pages. */
+		uint32_t _nonPageRegionStartAddress;
 };
 
 #endif
