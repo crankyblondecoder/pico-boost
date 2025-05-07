@@ -72,6 +72,22 @@ class Eeprom
 		Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount);
 
 		/**
+		 * Write the given bytes to the Eeprom.
+		 * @param startAddr Address to start writing at.
+		 * @param values Pointer to byte values to write.
+		 * @param count Number of bytes to write.
+		 */
+		void writeBytes(uint32_t startAddr, uint8_t* values, unsigned count);
+
+		/**
+		 * Read bytes from the Eeprom.
+		 * @param startAddr Address to start reading from.
+		 * @param buffer Pointer to byte array to read into.
+		 * @param count Number of bytes to read.
+		 */
+		void readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count);
+
+		/**
 		 * Read wear balanced page from Eeprom.
 		 * @param pageId Identifier of page to read. This should match the index of the pages defined during construction.
 		 * @param pageBuffer Pointer to buffer to read page data into. Must be page length in size.
@@ -102,6 +118,12 @@ class Eeprom
 	protected:
 
 		/**
+		 * Initialise data structures.
+		 * @note This MUST be called by the implementing class once its construction is complete.
+		 */
+		void _init();
+
+		/**
 		 * Clear the Eeprom to the given value for the given region.
 		 * @param value Value to set each byte in region to.
 		 * @param start Start address or region.
@@ -120,10 +142,10 @@ class Eeprom
 		/**
 		 * Read bytes from the Eeprom.
 		 * @param startAddr Address to start reading from.
-		 * @param values Pointer to byte array to read into.
+		 * @param buffer Pointer to byte array to read into.
 		 * @param count Number of bytes to read.
 		 */
-		virtual void _readBytes(uint32_t startAddr, uint8_t* values, unsigned count) = 0;
+		virtual void _readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count) = 0;
 
 	private:
 

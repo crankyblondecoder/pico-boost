@@ -1,6 +1,10 @@
-#include "pico/stdlib.h"
 #include <stdio.h>
+
+#include "hardware/i2c.h"
+#include "pico/stdlib.h"
 #include "pico/time.h"
+
+#include "Eeprom_24CS256.hpp"
 
 #include "pico_boost_control.hpp"
 #include "pico_boost_options.hpp"
@@ -60,6 +64,12 @@ unsigned last_edit_fast_mode_up_duration = 0;
 /** During edit mode fast mode, the last down switch duration that was acted upon. */
 unsigned last_edit_fast_mode_down_duration = 0;
 
+/** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
+// TODO Currently don't setup pages so basic read/write tests can be peformed.
+Eeprom_24CS256 eeprom_24CS256(i2c0, 0, 0, 0);
+
+void __testEeprom();
+
 void display_current_boost();
 void display_max_boost();
 void display_boost_de_energise();
@@ -81,6 +91,9 @@ void display_boost_max_duty();
 
 void boost_options_process_switches()
 {
+	if(select_up_button -> getSwitchState()) printf("Select button pressed.\n");
+	if(down_button -> getSwitchState()) printf("Down button pressed.\n");
+
 	unsigned newSelectUpStateIndex = select_up_button -> getCurrentStateCycleIndex();
 	unsigned newDownStateIndex = down_button -> getCurrentStateCycleIndex();
 
@@ -236,6 +249,9 @@ void boost_options_init()
 	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
 	nextDisplayRenderTime = get_absolute_time();
+
+	// TODO TEMP Test EEPROM
+	__testEeprom();
 }
 
 void boost_options_poll()
@@ -404,4 +420,39 @@ void display_boost_max_duty()
 	disp_data[0] = display -> encodeAlpha('Q');
 
 	display -> show(disp_data);
+}
+
+void __testEeprom()
+{
+	// Read more than 64 bytes (so it crosses the EEPROM page size).
+
+	uint8_t readBuffer[100];
+
+	for(int index = 0; index < 100; index++)
+	{
+		readBuffer[index] = 0x55;
+	}
+
+	eeprom_24CS256.readBytes(32, readBuffer, 100);
+
+	bool allGood = true;
+
+	for(int index = 0; index < 100; index++)
+	{
+		// Should read all 0xFF.
+		if(readBuffer[index] != 0xFF)
+		{
+			allGood = false;
+			break;
+		}
+	}
+
+	if(!allGood)
+	{
+		printf("EEPROM read test failed.");
+	}
+	else
+	{
+		printf("EEPROM read test passed.");
+	}
 }

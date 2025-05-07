@@ -13,6 +13,8 @@ pico_sdk_init()
 add_executable(pico_boost
 	AdcReader.cpp
 	BoschMap_0261230119.cpp
+	Eeprom.cpp
+	Eeprom_24CS256.cpp
 	pico_boost.cpp
 	pico_boost_options.cpp
 	pico_boost_control.cpp

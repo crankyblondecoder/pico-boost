@@ -41,8 +41,21 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 		// This should now point to the start of the non-page region.
 		_nonPageRegionStartAddress = curPageRegionStartAddr;
 	}
+}
 
-	// First bytes (header) of EEPROM are the magic number followed by the page count and then the pages info.
+void Eeprom::writeBytes(uint32_t startAddr, uint8_t* values, unsigned count)
+{
+	_writeBytes(startAddr, values, count);
+}
+
+void Eeprom::readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
+{
+	_readBytes(startAddr, buffer, count);
+}
+
+void Eeprom::_init()
+{
+// First bytes (header) of EEPROM are the magic number followed by the page count and then the pages info.
 	// If any existing header doesn't match what is expected then the header is re-written and the pages region cleared.
 
 	bool headerMatches = false;
@@ -60,7 +73,7 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 		uint8_t headerPageCount;
 		_readBytes(1, &headerPageCount, 1);
 
-		if(headerPageCount == pageCount)
+		if(headerPageCount == _pageCount)
 		{
 			uint8_t headerPageSize;
 			uint16_t headerWearCount;
@@ -69,7 +82,7 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 
 			curAddr = EEPROM_PAGE_COUNT_ADDR + 1;
 
-			for(unsigned index = 0; index < pageCount; index++)
+			for(unsigned index = 0; index < _pageCount; index++)
 			{
 				_readBytes(curAddr++, &headerPageSize, 1);
 
@@ -94,7 +107,7 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 
 		// Get the current wear index of all pages.
 
-		for(unsigned descrIndex = 0; descrIndex < pageCount; descrIndex++)
+		for(unsigned descrIndex = 0; descrIndex < _pageCount; descrIndex++)
 		{
 			uint16_t wearCount = _pages[descrIndex].wearCount;
 
@@ -143,9 +156,9 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 
 		// Start of the actual physical page instances region that corresponds to a particular page descr.
 		// A page descriptor is 3 bytes long.
-		uint32_t curPageRegionAddr = curHeaderAddr + pageCount * 3;
+		uint32_t curPageRegionAddr = curHeaderAddr + _pageCount * 3;
 
-		for(unsigned index = 0; index < pageCount; index++)
+		for(unsigned index = 0; index < _pageCount; index++)
 		{
 			uint8_t pageSize = _pages[index].pageSize;
 			uint16_t wearCount = _pages[index].wearCount;
