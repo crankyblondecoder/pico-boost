@@ -37,12 +37,12 @@ double BoschMap_0261230119::__readKpa()
 	// The actual bosch map sensor output, referenced to 5V.
 	double boschMapOut = _picoAdcReader -> read();
 
-printf("vmap: %f\n", boschMapOut);
+//printf("vmap: %f\n", boschMapOut);
 
 	// Voltage supplied to MAP sensor.
 	double vSys = _vSysAdcReader -> read();
 
-printf("vsys: %f\n", vSys);
+//printf("vsys: %f\n", vSys);
 
 	// This is the resultant equation from the Bosch 0261230119 map sensor data sheet.
 	return ((boschMapOut / vSys) - _bosch_map_c0) / _bosch_map_c1;

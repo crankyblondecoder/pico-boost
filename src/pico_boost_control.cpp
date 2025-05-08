@@ -16,13 +16,16 @@ PicoAdcReader* vsys_ref_adc;
 /**
  * The current boost MAP sensor reading, scaled by 1000 so a float isn't required and 3 decimal places are used.
  * It is done this way because read/write on 32bit numbers are atomic on the RP2040.
+ * @note This is an absolute pressure reading.
  */
 uint32_t boost_map_kpa_scaled = 0;
 
-/** The maximum boost, in Kpa. Scaled by 1000. */
+/** The maximum boost, in Kpa and relative to standard atmosphere. Scaled by 1000. */
 uint32_t boost_max_kpa_scaled = 100000;
 
-/** The pressure, in Kpa, below which the boost controller is de-energised. Scaled by 1000. */
+/**
+ * The pressure, in Kpa and relative to standard atmosphere, below which the boost controller is de-energised. Scaled by 1000.
+ */
 uint32_t boost_de_energise_kpa_scaled = 50000;
 
 /** PID proportional constant Kp. Scaled by 1000. */
@@ -44,6 +47,9 @@ absolute_time_t next_boost_read_time;
 bool energised = false;
 
 extern bool debug;
+
+/** Process the control solenoid parameters and energise it accordingly. */
+void process_control_solenoid();
 
 void boost_control_init()
 {
@@ -72,10 +78,16 @@ void boost_control_poll()
 
 	if(debug || curTime >= next_boost_read_time)
 	{
-		// Report data at approximately 100hz
+		// Process map sensor and control solenoid at approximately 100hz
 		next_boost_read_time = delayed_by_ms(next_boost_read_time, 10);
 
 		boost_map_kpa_scaled = boost_map_sensor -> readKpa() * 1000.0;
+
+		double boost_atm_scaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
+
+		energised = boost_atm_scaled >= boost_de_energise_kpa_scaled;
+
+		process_control_solenoid();
 	}
 }
 
@@ -86,7 +98,7 @@ bool boost_control_is_energised()
 
 bool boost_control_max_boost_reached()
 {
-	return boost_map_kpa_scaled >= boost_max_kpa_scaled;
+	return boost_control_get_kpa_scaled() >= boost_max_kpa_scaled;
 }
 
 unsigned boost_control_get_kpa_scaled()
@@ -168,4 +180,9 @@ void boost_control_alter_max_duty(int maxDutyDelta)
 	int newVal = (int)boost_max_duty + maxDutyDelta;
 
 	if(newVal > 0) boost_max_duty = newVal; else boost_max_duty = 0;
+}
+
+void process_control_solenoid()
+{
+	// TODO ...
 }

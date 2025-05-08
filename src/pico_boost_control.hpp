@@ -15,27 +15,27 @@ bool boost_control_is_energised();
 /** Get whether maximum boost has been reached. */
 bool boost_control_max_boost_reached();
 
-/** Get the current boost value as measured from the MAP sensor. In kPa, scaled by 1000. */
+/** Get the current boost value, relative to std atm, as measured from the MAP sensor. In kPa, scaled by 1000. */
 unsigned boost_control_get_kpa_scaled();
 
 /**
- * Get the maximum boost. In kPa, scaled by 1000.
+ * Get the maximum boost, relative to std atm. In kPa, scaled by 1000.
  */
 unsigned boost_control_get_max_kpa_scaled();
 
 /**
- * Alter the maximum boost by adjusting it by a delta.
+ * Alter the maximum boost, relative to std atm, by adjusting it by a delta.
  * @param maxBoostKpaScaledDelta Delta, scaled by 1000.
  */
 void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta);
 
 /**
- * Get the de-energise boost. In kPa, scaled by 1000.
+ * Get the de-energise boost, relative to std atm. In kPa, scaled by 1000.
  */
 unsigned boost_control_get_de_energise_kpa_scaled();
 
 /**
- * Alter the de-energise boost by adjusting it by a delta.
+ * Alter the de-energise boost, relative to std atm, by adjusting it by a delta.
  * @param deEnergiseKpaScaledDelta Delta, scaled by 1000.
  */
 void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta);
