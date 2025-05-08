@@ -48,10 +48,11 @@ extern bool debug;
 void boost_control_init()
 {
 	// Create ADC reader to read VSys. The Pico divides this voltage by 3.
-	vsys_ref_adc = new PicoAdcReader(4, 10, 3.0, 3.0);
+	vsys_ref_adc = new PicoAdcReader(3, 10, 3.0, 3.0);
 
 	// Start map sensor on ADC Channel 0. This should map to GP26.
-	boost_map_sensor = new BoschMap_0261230119(0, vsys_ref_adc);
+	// Voltage divider scale is calculated from (R1 + R2) / R2.
+	boost_map_sensor = new BoschMap_0261230119(0, 3.0, (2.2 + 3.2) / 3.2, vsys_ref_adc);
 
 	next_boost_latch_time = get_absolute_time();
 	next_boost_read_time = get_absolute_time();

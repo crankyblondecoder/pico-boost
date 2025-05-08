@@ -20,9 +20,12 @@ class BoschMap_0261230119
 
 		/**
 		 * @param adcInput ADC input number (Pico I has 0, 1 and 2 as external pins).
+		 * @param vRef The reference voltage used by the Pico ADC.
+		 * @param vScale Scaling factor to apply to the Pico ADC to get the map sensor output voltage. Takes into account a
+		 *        voltage divider.
 		 * @param vSysAdcReader The ADC reader that provides VSys voltage. Not owned by this.
 		 */
-		BoschMap_0261230119(unsigned adcInput, PicoAdcReader* vSysAdcReader);
+		BoschMap_0261230119(unsigned adcInput, double vRef, double vScale, PicoAdcReader* vSysAdcReader);
 
 		/**
 		 * Latch the current raw map sensor data.

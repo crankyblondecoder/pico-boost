@@ -6,16 +6,14 @@
 
 extern bool debugMsgActive;
 
-double BoschMap_0261230119::_voltageDividerRatio = 3.0 / 5.0;
-
 BoschMap_0261230119::~BoschMap_0261230119()
 {
 }
 
-BoschMap_0261230119::BoschMap_0261230119(unsigned adcInput, PicoAdcReader* vSysAdcReader) :
+BoschMap_0261230119::BoschMap_0261230119(unsigned adcInput,  double vRef, double vScale, PicoAdcReader* vSysAdcReader) :
 	_vSysAdcReader(vSysAdcReader)
 {
-	_picoAdcReader = new PicoAdcReader(adcInput, 10, 3.0, 1.0 / _voltageDividerRatio);
+	_picoAdcReader = new PicoAdcReader(adcInput, 10, vRef, vScale);
 }
 
 void BoschMap_0261230119::latch()
@@ -39,8 +37,12 @@ double BoschMap_0261230119::__readKpa()
 	// The actual bosch map sensor output, referenced to 5V.
 	double boschMapOut = _picoAdcReader -> read();
 
+printf("vmap: %f\n", boschMapOut);
+
 	// Voltage supplied to MAP sensor.
 	double vSys = _vSysAdcReader -> read();
+
+printf("vsys: %f\n", vSys);
 
 	// This is the resultant equation from the Bosch 0261230119 map sensor data sheet.
 	return ((boschMapOut / vSys) - _bosch_map_c0) / _bosch_map_c1;
