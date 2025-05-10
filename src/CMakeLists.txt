@@ -19,6 +19,7 @@ add_executable(pico_boost
 	pico_boost_options.cpp
 	pico_boost_control.cpp
 	PicoAdcReader.cpp
+	PicoPwm.cpp
 	PicoSwitch.cpp
 	TM1637_pico.cpp)
 

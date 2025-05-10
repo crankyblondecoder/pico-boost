@@ -43,6 +43,8 @@ uint32_t boost_max_duty = 100;
 absolute_time_t next_boost_latch_time;
 absolute_time_t next_boost_read_time;
 
+absolute_time_t last_solenoid_proc_time;
+
 /** Current energised state of the boost control solenoid. Does NOT include 0% duty cycle. */
 bool energised = false;
 
@@ -61,7 +63,8 @@ void boost_control_init()
 	boost_map_sensor = new BoschMap_0261230119(0, 3.0, (2.2 + 3.2) / 3.2, vsys_ref_adc);
 
 	next_boost_latch_time = get_absolute_time();
-	next_boost_read_time = get_absolute_time();
+	next_boost_read_time = next_boost_latch_time;
+	last_solenoid_proc_time = next_boost_latch_time;
 }
 
 void boost_control_poll()
