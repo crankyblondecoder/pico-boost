@@ -65,8 +65,7 @@ unsigned last_edit_fast_mode_up_duration = 0;
 unsigned last_edit_fast_mode_down_duration = 0;
 
 /** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
-// TODO Currently don't setup pages so basic read/write tests can be peformed.
-Eeprom_24CS256 eeprom_24CS256(i2c0, 0, 0, 0);
+Eeprom_24CS256* eeprom_24CS256;
 
 void __testEeprom();
 
@@ -231,6 +230,10 @@ void boost_options_process_switches()
 
 void boost_options_init()
 {
+	// Create EEPROM instance and initialise it.
+	// TODO Currently don't setup pages so basic read/write tests can be peformed.
+	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, 0, 0);
+
 	// Create 4 digit display instance.
 	display = new TM1637Display(16, 17);
 
@@ -433,7 +436,7 @@ void __testEeprom()
 		readBuffer[index] = 0x55;
 	}
 
-	eeprom_24CS256.readBytes(32, readBuffer, 100);
+	eeprom_24CS256 -> readBytes(32, readBuffer, 100);
 
 	bool allGood = true;
 
