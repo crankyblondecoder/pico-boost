@@ -66,7 +66,7 @@ class PicoSwitch
 		PullUpDown _pullUpDown;
 
 		/** Current count of number of times the switch pin is sampled as active. Provides hysteresis. */
-		unsigned _activeCount;
+		unsigned _activeCount = 0;
 
 		/** The switch pin active count at which counting stops. */
 		unsigned _activeCountThreshold;

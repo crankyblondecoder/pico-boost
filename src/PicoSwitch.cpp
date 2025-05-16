@@ -77,7 +77,6 @@ void PicoSwitch::poll()
 
 			_currentState = curState;
 			_curStateTime = curTime;
-
 		}
 	}
 }

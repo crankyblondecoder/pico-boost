@@ -38,7 +38,7 @@ uint32_t boost_pid_integ_const_scaled = 500;
 uint32_t boost_pid_deriv_const_scaled = 500;
 
 /** Maximum duty cycle, in %. */
-uint32_t boost_max_duty = 100;
+uint32_t boost_max_duty = 95;
 
 absolute_time_t next_boost_latch_time;
 absolute_time_t next_boost_read_time;
@@ -86,7 +86,7 @@ void boost_control_poll()
 
 		boost_map_kpa_scaled = boost_map_sensor -> readKpa() * 1000.0;
 
-		double boost_atm_scaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
+		double boost_atm_scaled = (double)boost_map_kpa_scaled - STD_ATM_PRESSURE;
 
 		energised = boost_atm_scaled >= boost_de_energise_kpa_scaled;
 
@@ -101,16 +101,12 @@ bool boost_control_is_energised()
 
 bool boost_control_max_boost_reached()
 {
-	return boost_control_get_kpa_scaled() >= boost_max_kpa_scaled;
+	return boost_control_get_kpa_scaled() >= (int)boost_max_kpa_scaled;
 }
 
-unsigned boost_control_get_kpa_scaled()
+int boost_control_get_kpa_scaled()
 {
-	int retVal = boost_map_kpa_scaled - STD_ATM_PRESSURE;
-
-	if(retVal > 0) return retVal;
-
-	return 0;
+	return boost_map_kpa_scaled - STD_ATM_PRESSURE;
 }
 
 unsigned boost_control_get_max_kpa_scaled()

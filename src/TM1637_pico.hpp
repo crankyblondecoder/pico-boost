@@ -5,7 +5,21 @@
 
 /**
  * Display driver for TM1637 based multi-segment displays.
- * Adapted from Arduino module.
+ *
+ * The segment bits are as follows:
+ *
+ *     A
+ *    ---
+ * F |   | B
+ *    -G-
+ * E |   | C
+ *    ---
+ *     D
+ *
+ *  Where:
+ *
+ *     XGFEDCBA
+ *   0b00000000
  */
 class TM1637Display
 {

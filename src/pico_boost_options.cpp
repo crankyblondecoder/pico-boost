@@ -27,21 +27,28 @@ extern bool debug;
 #define MODE_ENTER_EDIT_TIME 3000
 
 /** Amount of time, in milliseconds, that either up or down button must be pressed for to go into "fast" mode. */
-#define EDIT_MODE_FAST_TIME 2000
+#define EDIT_MODE_FAST_TIME 1500
 
-#define EDIT_MODE_FAST_REPEAT_RATE 500
+/** Time in milliseconds between edit fast mode data changes. */
+#define EDIT_MODE_FAST_REPEAT_RATE 100
+
+/** Time in milliseconds of display "flashing" toggle. */
+#define DISPLAY_FLASH_PERIOD 500
+
+/** Time between display refresh, in milliseconds. */
+#define DISPLAY_FRAME_RATE 50
 
 /** Button for select/up operations. */
 PicoSwitch* select_up_button;
 
-/** The current select/up button state index. */
-unsigned cur_select_up_button_state_index = 0;
+/** The last _fully_ procesed select/up button state index. */
+unsigned last_proc_select_up_button_state_index = 0;
 
 /** Button for down operation. */
 PicoSwitch* down_button;
 
-/** The current down button state index. */
-unsigned cur_down_button_state_index = 0;
+/** The last _fully_ processed down button state index. */
+unsigned last_proc_down_button_state_index = 0;
 
 /** 4 Digit display. */
 TM1637Display* display;
@@ -64,6 +71,12 @@ unsigned last_edit_fast_mode_up_duration = 0;
 /** During edit mode fast mode, the last down switch duration that was acted upon. */
 unsigned last_edit_fast_mode_down_duration = 0;
 
+/** Flag to indicate whether display is on in the display "flashing" cycle. */
+bool displayFlashOn = true;
+
+/** Next absolute time to toggle the current display flash flag. */
+absolute_time_t nextDisplayFlashToggleTime = 0;
+
 /** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
 Eeprom_24CS256* eeprom_24CS256;
 
@@ -84,20 +97,21 @@ void display_boost_max_duty();
 // B: BOOST_MAX_KPA
 // U: BOOST_DE_ENERGISE_KPA
 // P: BOOST_PID_PROP_CONST
-// S: BOOST_PID_INTEG_CONST
+// J: BOOST_PID_INTEG_CONST
 // D: BOOST_PID_DERIV_CONST
 // Q: BOOST_MAX_DUTY
 
 void boost_options_process_switches()
 {
-	if(select_up_button -> getSwitchState()) printf("Select button pressed.\n");
-	if(down_button -> getSwitchState()) printf("Down button pressed.\n");
+	unsigned curSelectUpStateIndex = select_up_button -> getCurrentStateCycleIndex();
+	unsigned curDownStateIndex = down_button -> getCurrentStateCycleIndex();
 
-	unsigned newSelectUpStateIndex = select_up_button -> getCurrentStateCycleIndex();
-	unsigned newDownStateIndex = down_button -> getCurrentStateCycleIndex();
+	bool selectUpStateUnProc = curSelectUpStateIndex != last_proc_select_up_button_state_index;
+	bool downStateUnProc = curDownStateIndex != last_proc_down_button_state_index;
 
-	bool selectUpNewState = newSelectUpStateIndex != cur_select_up_button_state_index;
-	bool downNewState = newDownStateIndex != cur_down_button_state_index;
+	// Full processed flags.
+	bool selectUpProced = false;
+	bool downProced = false;
 
 	// Regardless of the current selected option, both switches not being pressed for greater than the mode complete timeout
 	// puts the system back into a default mode.
@@ -107,24 +121,32 @@ void boost_options_process_switches()
 	{
 		cur_selected_option = CURRENT_BOOST;
 		edit_mode = false;
+
+		selectUpProced = true;
+		downProced = true;
 	}
 	else if(!edit_mode)
 	{
-		// Nothing to be done if no new select button switch state has occurred.
-		if(selectUpNewState)
+		if(selectUpStateUnProc)
 		{
 			// Look for edit mode entry, which can't happen in (default) boost display mode.
 			if(cur_selected_option != CURRENT_BOOST && select_up_button -> getSwitchState() &&
-				select_up_button -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME)
+				select_up_button -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME && !down_button -> getSwitchState())
 			{
 				edit_mode = true;
+
+				selectUpProced = true;
+				downProced = true;
 			}
-			else
+			else if(!select_up_button -> getSwitchState())
 			{
-				// Change to the next state.
+				// Change to the next state on select button release.
 				cur_selected_option++;
 
 				if(cur_selected_option >= SELECT_OPTION_LAST) cur_selected_option = CURRENT_BOOST;
+
+				selectUpProced = true;
+				downProced = true;
 			}
 		}
 	}
@@ -136,46 +158,76 @@ void boost_options_process_switches()
 		if(select_up_button -> getSwitchState() && down_button -> getSwitchState())
 		{
 			edit_mode = false;
+
+			selectUpProced = true;
+			downProced = true;
+
+			// TODO ... Trigger options save to EEPROM.
 		}
 		else
 		{
+			// Note: Non fast edit mode relies on button release to trigger change otherwise fast edit mode won't be detected
+			// and edit mode exit will cause a simultaneous change in values which isn't desired.
+
 			int delta = 0;
 
-			if(select_up_button -> getSwitchState())
+			if(selectUpStateUnProc)
 			{
+				bool switchState = select_up_button -> getSwitchState();
+
 				unsigned upDuration = select_up_button -> getSwitchStateDuration();
 
-				if(upDuration > EDIT_MODE_FAST_TIME)
+				if(switchState && upDuration > EDIT_MODE_FAST_TIME)
 				{
 					// Rate limit fast edit mode.
 					if(upDuration - last_edit_fast_mode_up_duration > EDIT_MODE_FAST_REPEAT_RATE)
 					{
-						delta = 5;
+						delta = 1;
 						last_edit_fast_mode_up_duration = upDuration;
 					}
+
+					// Note: Button is left as unprocessed so this block can be re-entered.
 				}
-				else if(selectUpNewState)
+				else if(!switchState)
 				{
 					delta = 1;
+
+					// Button is full processed.
+					selectUpProced = true;
+				}
+				else
+				{
+					// This should invoke fast edit change immediately.
 					last_edit_fast_mode_up_duration = 0;
 				}
 			}
-			else if(down_button -> getSwitchState())
+
+			if(downStateUnProc)
 			{
+				bool switchState = down_button -> getSwitchState();
+
 				unsigned downDuration = down_button -> getSwitchStateDuration();
 
-				if(downDuration > EDIT_MODE_FAST_TIME)
+				if(switchState && downDuration > EDIT_MODE_FAST_TIME)
 				{
 					// Rate limit fast edit mode.
-					if(downDuration - last_edit_fast_mode_down_duration)
+					if(downDuration - last_edit_fast_mode_down_duration > EDIT_MODE_FAST_REPEAT_RATE)
 					{
-						delta = -10;
+						delta = -1;
 						last_edit_fast_mode_down_duration = downDuration;
 					}
+
+					// Note: Button is left as unprocessed so this block can be re-entered.
 				}
-				else if(downNewState)
+				else if(!switchState)
 				{
 					delta = -1;
+
+					downProced = true;
+				}
+				else
+				{
+					// This should invoke fast edit change immediately.
 					last_edit_fast_mode_down_duration = 0;
 				}
 			}
@@ -224,8 +276,9 @@ void boost_options_process_switches()
 		}
 	}
 
-	cur_select_up_button_state_index = newSelectUpStateIndex;
-	cur_down_button_state_index = newDownStateIndex;
+	// Save the indexes of any fully processed buttons.
+	if(selectUpProced) last_proc_select_up_button_state_index = curSelectUpStateIndex;
+	if(downProced) last_proc_down_button_state_index = curDownStateIndex;
 }
 
 void boost_options_init()
@@ -253,6 +306,8 @@ void boost_options_init()
 
 	nextDisplayRenderTime = get_absolute_time();
 
+	nextDisplayFlashToggleTime = nextDisplayRenderTime;
+
 	// TODO TEMP Test EEPROM
 	__testEeprom();
 }
@@ -270,8 +325,16 @@ void boost_options_poll()
 
 	if(debug || curTime >= nextDisplayRenderTime)
 	{
+		// Process current display flashing toggle.
+		if(curTime > nextDisplayFlashToggleTime) {
+
+			displayFlashOn = !displayFlashOn;
+
+			nextDisplayFlashToggleTime = delayed_by_ms(nextDisplayFlashToggleTime, DISPLAY_FLASH_PERIOD);
+		}
+
 		// Limit the frame rate so the display doesn't "strobe".
-		nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, 200);
+		nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, DISPLAY_FRAME_RATE);
 
 		switch(cur_selected_option)
 		{
@@ -315,10 +378,11 @@ void boost_options_poll()
 
 void display_current_boost()
 {
-	unsigned boost_kpa_scaled = boost_control_get_kpa_scaled();
+	int boost_kpa_scaled = boost_control_get_kpa_scaled();
 
 	// Show kpa with 0 decimal points.
-	unsigned dispKpa = boost_kpa_scaled / 1000;
+	int dispKpa = boost_kpa_scaled / 1000;
+	if(dispKpa < 0) dispKpa *= -1;
 
 	// Display just 3 digits of kPa value.
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
@@ -333,7 +397,14 @@ void display_current_boost()
 	}
 	else
 	{
-		disp_data[0] = 0;
+		if(boost_kpa_scaled < 0)
+		{
+			disp_data[0] = display -> encodeAlpha('-');
+		}
+		else
+		{
+			disp_data[0] = 0;
+		}
 	}
 
 	display -> show(disp_data);
@@ -349,7 +420,14 @@ void display_max_boost()
 	// Display just 3 digits of kPa value.
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('B');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('B');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -364,7 +442,14 @@ void display_boost_de_energise()
 	// Display just 3 digits of kPa value.
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('U');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('U');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -378,7 +463,14 @@ void display_boost_pid_prop_const()
 
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('P');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('P');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -392,7 +484,14 @@ void display_boost_pid_integ_const()
 
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('S');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('J');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -406,7 +505,14 @@ void display_boost_pid_deriv_const()
 
 	display -> encodeNumber(dispKpa, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('D');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('D');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -420,7 +526,14 @@ void display_boost_max_duty()
 
 	display -> encodeNumber(dispVal, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('Q');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('Q');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }

@@ -287,6 +287,10 @@ uint8_t TM1637Display::encodeAlpha(char character)
 		case 'Y':
 			retVal = 0x6E;
 			break;
+
+		case '-':
+			retVal = 0x40;
+			break;
 	}
 
 	return retVal;
