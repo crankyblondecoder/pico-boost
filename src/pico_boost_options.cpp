@@ -397,7 +397,7 @@ void display_current_boost()
 	}
 	else
 	{
-		if(boost_kpa_scaled < 0)
+		if(boost_kpa_scaled <= -1000)
 		{
 			disp_data[0] = display -> encodeAlpha('-');
 		}
