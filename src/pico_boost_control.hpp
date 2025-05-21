@@ -87,4 +87,9 @@ unsigned boost_control_get_max_duty();
  */
 void boost_control_alter_max_duty(int maxDutyDelta);
 
+/**
+ * Get the current boost control solenoid duty cycle. Scaled by 1000.
+ */
+unsigned boost_get_current_duty_scaled();
+
 #endif

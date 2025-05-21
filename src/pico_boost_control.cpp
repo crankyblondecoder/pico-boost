@@ -40,6 +40,9 @@ uint32_t boost_pid_deriv_const_scaled = 500;
 /** Maximum duty cycle, in %. */
 uint32_t boost_max_duty = 95;
 
+/** Current duty cycle. Scaled by 1000. */
+uint32_t boost_current_duty_scaled = 0;
+
 absolute_time_t next_boost_latch_time;
 absolute_time_t next_boost_read_time;
 
@@ -179,6 +182,13 @@ void boost_control_alter_max_duty(int maxDutyDelta)
 	int newVal = (int)boost_max_duty + maxDutyDelta;
 
 	if(newVal > 0) boost_max_duty = newVal; else boost_max_duty = 0;
+
+	if(boost_max_duty > 100) boost_max_duty = 100;
+}
+
+unsigned boost_get_current_duty_scaled()
+{
+	return boost_current_duty_scaled;
 }
 
 void process_control_solenoid()

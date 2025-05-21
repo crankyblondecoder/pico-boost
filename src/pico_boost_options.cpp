@@ -11,6 +11,9 @@
 
 extern bool debug;
 
+/** Amount of time that both buttons have to be pressed to invoke a test pass. */
+#define TEST_START_TIMEOUT 5000
+
 /** Conversion factor of KPa to PSI. */
 #define KPA_TO_PSI 0.145038
 
@@ -80,9 +83,10 @@ absolute_time_t nextDisplayFlashToggleTime = 0;
 /** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
 Eeprom_24CS256* eeprom_24CS256;
 
-void __testEeprom();
+void __runTests();
 
 void display_current_boost();
+void display_current_duty();
 void display_max_boost();
 void display_boost_de_energise();
 void display_boost_pid_prop_const();
@@ -94,6 +98,7 @@ void display_boost_max_duty();
 // -------------------------
 // E: Default display energised.
 // L: Default display max boost reached.
+// C: Current solenoid control valve duty cycle.
 // B: BOOST_MAX_KPA
 // U: BOOST_DE_ENERGISE_KPA
 // P: BOOST_PID_PROP_CONST
@@ -113,13 +118,27 @@ void boost_options_process_switches()
 	bool selectUpProced = false;
 	bool downProced = false;
 
+	// Check for test invokation. Both buttons pressed.
+	if(selectUpStateUnProc && downStateUnProc && select_up_button -> getSwitchState() &&
+		select_up_button -> getSwitchStateDuration() > TEST_START_TIMEOUT && down_button -> getSwitchState() &&
+		down_button -> getSwitchStateDuration() > TEST_START_TIMEOUT)
+	{
+		__runTests();
+
+		last_proc_select_up_button_state_index = curSelectUpStateIndex;
+		last_proc_down_button_state_index = curDownStateIndex;
+
+		return;
+	}
+
 	// Regardless of the current selected option, both switches not being pressed for greater than the mode complete timeout
-	// puts the system back into a default mode.
+	// puts the system back into a default mode. However solenoid duty cycle being displayed stays as is.
 	if(!select_up_button -> getSwitchState() && !down_button -> getSwitchState() &&
 		select_up_button -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
 		down_button -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT)
 	{
-		cur_selected_option = CURRENT_BOOST;
+		if(cur_selected_option != CURRENT_DUTY) cur_selected_option = CURRENT_BOOST;
+
 		edit_mode = false;
 
 		selectUpProced = true;
@@ -127,10 +146,10 @@ void boost_options_process_switches()
 	}
 	else if(!edit_mode)
 	{
-		if(selectUpStateUnProc)
+		if(selectUpStateUnProc || downStateUnProc)
 		{
-			// Look for edit mode entry, which can't happen in (default) boost display mode.
-			if(cur_selected_option != CURRENT_BOOST && select_up_button -> getSwitchState() &&
+			// Look for edit mode entry, which can't happen in (default) boost display mode or solenoid valve duty display mode.
+			if(cur_selected_option > CURRENT_DUTY && select_up_button -> getSwitchState() &&
 				select_up_button -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME && !down_button -> getSwitchState())
 			{
 				edit_mode = true;
@@ -138,12 +157,22 @@ void boost_options_process_switches()
 				selectUpProced = true;
 				downProced = true;
 			}
-			else if(!select_up_button -> getSwitchState())
+			else if(selectUpStateUnProc && !select_up_button -> getSwitchState())
 			{
 				// Change to the next state on select button release.
 				cur_selected_option++;
 
 				if(cur_selected_option >= SELECT_OPTION_LAST) cur_selected_option = CURRENT_BOOST;
+
+				selectUpProced = true;
+				downProced = true;
+			}
+			else if(downStateUnProc && !down_button -> getSwitchState())
+			{
+				// Change to the previou state on down button release.
+				cur_selected_option--;
+
+				if(cur_selected_option < 0) cur_selected_option = SELECT_OPTION_LAST - 1;
 
 				selectUpProced = true;
 				downProced = true;
@@ -307,9 +336,6 @@ void boost_options_init()
 	nextDisplayRenderTime = get_absolute_time();
 
 	nextDisplayFlashToggleTime = nextDisplayRenderTime;
-
-	// TODO TEMP Test EEPROM
-	__testEeprom();
 }
 
 void boost_options_poll()
@@ -341,6 +367,11 @@ void boost_options_poll()
 			case CURRENT_BOOST:
 
 				display_current_boost();
+				break;
+
+			case CURRENT_DUTY:
+
+				display_current_duty();
 				break;
 
 			case BOOST_MAX_KPA:
@@ -397,6 +428,7 @@ void display_current_boost()
 	}
 	else
 	{
+		// Accounts for flutter around zero. ie Stops negative sign from flashing randomly.
 		if(boost_kpa_scaled <= -1000)
 		{
 			disp_data[0] = display -> encodeAlpha('-');
@@ -406,6 +438,21 @@ void display_current_boost()
 			disp_data[0] = 0;
 		}
 	}
+
+	display -> show(disp_data);
+}
+
+void display_current_duty()
+{
+	unsigned curDuty = boost_get_current_duty_scaled();
+
+	// Show max kpa with 0 decimal points.
+	unsigned dispDuty = curDuty / 1000;
+
+	// Display just 3 digits of kPa value.
+	display -> encodeNumber(dispDuty, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('C');
 
 	display -> show(disp_data);
 }
@@ -565,10 +612,24 @@ void __testEeprom()
 
 	if(!allGood)
 	{
-		printf("EEPROM read test failed.");
+		printf("EEPROM read test failed.\n");
 	}
 	else
 	{
-		printf("EEPROM read test passed.");
+		printf("EEPROM read test passed.\n");
 	}
+}
+
+void __runTests()
+{
+	// Allows testing equipment to detect test start.
+	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, true);
+
+	printf("Run tests starting.\n");
+
+	__testEeprom();
+
+	printf("Run tests finished.\n");
+
+	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, false);
 }

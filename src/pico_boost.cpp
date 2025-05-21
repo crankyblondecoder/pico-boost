@@ -44,6 +44,11 @@ int main()
 	// Setup ADC.
 	adc_init();
 
+	// Setup GPIO for boost options. Done here so it doesn't get forgotten when allocating GPIO.
+	gpio_init(BOOST_OPTIONS_TEST_ACTIVE_GPIO);
+	gpio_set_dir(BOOST_OPTIONS_TEST_ACTIVE_GPIO, GPIO_OUT);
+	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, false);
+
 	// Push GPIO pin 23 (SMPS Mode) high to disable power saving, which causes noise in the ADC.
 	gpio_init(23);
 	gpio_set_dir(23, GPIO_OUT);

@@ -4,11 +4,19 @@
 #include "PicoSwitch.hpp"
 #include "TM1637_pico.hpp"
 
+/** The GPIO pin that is set high to indicate that boost options initiated testing is active. */
+#define BOOST_OPTIONS_TEST_ACTIVE_GPIO 3
+
 /** Select display value options. */
 enum SelectOption
 {
-	/** Current boost in the solenoid energised region. */
+	/** Current boost as read by map sensor. */
 	CURRENT_BOOST,
+	/**
+	 * Current duty cycle being appied to solenoid valve.
+	 * @note Always keep this second. If it has to change, alter the edit mode entry if statement.
+	 */
+	CURRENT_DUTY,
 	/** Maximum boost, in kPa. */
 	BOOST_MAX_KPA,
 	/** Boost value, in kPa, below which the wastegate solenoid is de-energised. */
