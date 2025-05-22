@@ -35,6 +35,7 @@ target_link_libraries(pico_boost
 	pico_multicore
 	pico_time
 	pico_platform
+	pico_rand
 	hardware_adc
 	hardware_clocks
 	hardware_gpio

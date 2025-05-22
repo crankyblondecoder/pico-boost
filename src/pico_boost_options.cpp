@@ -2,6 +2,7 @@
 
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
+#include "pico/rand.h"
 #include "pico/time.h"
 
 #include "Eeprom_24CS256.hpp"
@@ -587,23 +588,30 @@ void display_boost_max_duty()
 
 void __testEeprom()
 {
-	// Read more than 64 bytes (so it crosses the EEPROM page size).
+	// Write random bytes to a range at the end of the EEPROM so that it crosses a 64 byte page boundary.
+	// ie The lowest order 6 bits are the address within a page.
 
-	uint8_t readBuffer[100];
+	uint32_t writeBuffer[3];
 
-	for(int index = 0; index < 100; index++)
-	{
-		readBuffer[index] = 0x55;
-	}
+	writeBuffer[0] = get_rand_32();
+	writeBuffer[1] = get_rand_32();
+	writeBuffer[2] = get_rand_32();
 
-	eeprom_24CS256 -> readBytes(32, readBuffer, 100);
+	uint32_t eepromAddr = 0xFFBB;
+
+	eeprom_24CS256 -> writeBytes(eepromAddr, (uint8_t*) writeBuffer, 12);
+
+	// Read the bytes back and compare.
+
+	uint32_t readBuffer[3];
+
+	eeprom_24CS256 -> readBytes(eepromAddr, (uint8_t*) readBuffer, 12);
 
 	bool allGood = true;
 
-	for(int index = 0; index < 100; index++)
+	for(int index = 0; index < 3; index++)
 	{
-		// Should read all 0xFF.
-		if(readBuffer[index] != 0xFF)
+		if(writeBuffer[index] != readBuffer[index])
 		{
 			allGood = false;
 			break;

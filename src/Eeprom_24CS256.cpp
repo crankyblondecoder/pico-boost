@@ -38,6 +38,7 @@ void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned c
 		// Doesn't include address bytes.
 		numToWriteInPage = 0;
 
+		// Assemble the buffer to write.
 		// Lowest order 6 bits is the address within a page.
 		do {
 
@@ -47,7 +48,7 @@ void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned c
 			totalNumWritten++;
 			nextAddr++;
 
-		} while(totalNumWritten < count && nextAddr & 0x3F);
+		} while(totalNumWritten < count && (nextAddr & 0x3F));
 
 		// Only 15bits of the address is kept.
 		buffer[0] = (writeAddr & 0x7F00) >> 8;
@@ -59,8 +60,9 @@ void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned c
 
 		writeAddr = nextAddr;
 
-		// TODO ... Allow for enough time for the chip to write to it's memory.
-		blah;
+		// Allow for enough time for the chip to write to it's memory.
+		// Twc (Write Cycle Time) is 5ms for this chip, as per the datasheet.
+		sleep_ms(5);
 	}
 }
 
