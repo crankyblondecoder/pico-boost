@@ -55,7 +55,7 @@ void Eeprom::readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
 
 void Eeprom::_init()
 {
-// First bytes (header) of EEPROM are the magic number followed by the page count and then the pages info.
+	// First bytes (header) of EEPROM are the magic number followed by the page count and then the pages info.
 	// If any existing header doesn't match what is expected then the header is re-written and the pages region cleared.
 
 	bool headerMatches = false;
@@ -228,4 +228,9 @@ void Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 uint32_t Eeprom::getNonPageRegionStartAddress()
 {
 	return _nonPageRegionStartAddress;
+}
+
+bool Eeprom::verifyMetaData(EepromPage* pages, uint8_t pageCount)
+{
+	// TODO ...
 }

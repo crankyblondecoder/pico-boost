@@ -84,6 +84,8 @@ absolute_time_t nextDisplayFlashToggleTime = 0;
 /** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
 Eeprom_24CS256* eeprom_24CS256;
 
+EepromPage eepromPages[1] = {{32, 64}};
+
 void __runTests();
 
 void display_current_boost();
@@ -314,8 +316,10 @@ void boost_options_process_switches()
 void boost_options_init()
 {
 	// Create EEPROM instance and initialise it.
-	// TODO Currently don't setup pages so basic read/write tests can be peformed.
-	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, 0, 0);
+	// Use wear levelled page of size 32.
+	// Current saved boost options size: 24
+
+	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, eepromPages, 1);
 
 	// Create 4 digit display instance.
 	display = new TM1637Display(16, 17);
@@ -620,11 +624,23 @@ void __testEeprom()
 
 	if(!allGood)
 	{
-		printf("EEPROM read test failed.\n");
+		printf("EEPROM non-page write/read test failed.\n");
 	}
 	else
 	{
-		printf("EEPROM read test passed.\n");
+		printf("EEPROM non-page write/read test passed.\n");
+	}
+
+	// Ask EEPROM to read and verify its metadata.
+	allGood = eeprom_24CS256 -> verifyMetaData(eepromPages, 1);
+
+	if(!allGood)
+	{
+		printf("EEPROM meta data test failed.\n");
+	}
+	else
+	{
+		printf("EEPROM meta data test passed.\n");
 	}
 }
 

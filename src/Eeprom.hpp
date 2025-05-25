@@ -115,6 +115,13 @@ class Eeprom
 		 */
 		uint32_t getNonPageRegionStartAddress();
 
+		/**
+		 * Independantly verify this EEPROM's meta data.
+		 * @param pages Array of expected wear levelled pages.
+		 * @param pageCount Number of entries in the pages array.
+		 */
+		bool verifyMetaData(EepromPage* pages, uint8_t pageCount);
+
 	protected:
 
 		/**

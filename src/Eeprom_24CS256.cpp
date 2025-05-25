@@ -56,7 +56,7 @@ void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned c
 
 		// Write data to address.
 		response = i2c_write_timeout_us(_i2cBus, 0x50 | (_i2cAddr & 0x7), buffer, numToWriteInPage + 2, false,
-		__calcTimeout(2));
+		__calcTimeout(2 + numToWriteInPage));
 
 		writeAddr = nextAddr;
 
