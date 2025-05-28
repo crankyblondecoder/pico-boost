@@ -76,30 +76,34 @@ class Eeprom
 		 * @param startAddr Address to start writing at.
 		 * @param values Pointer to byte values to write.
 		 * @param count Number of bytes to write.
+		 * @returns True if write was successful.
 		 */
-		void writeBytes(uint32_t startAddr, uint8_t* values, unsigned count);
+		bool writeBytes(uint32_t startAddr, uint8_t* values, unsigned count);
 
 		/**
 		 * Read bytes from the Eeprom.
 		 * @param startAddr Address to start reading from.
 		 * @param buffer Pointer to byte array to read into.
 		 * @param count Number of bytes to read.
+		 * @returns True if read was successful.
 		 */
-		void readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count);
+		bool readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count);
 
 		/**
 		 * Read wear balanced page from Eeprom.
 		 * @param pageId Identifier of page to read. This should match the index of the pages defined during construction.
 		 * @param pageBuffer Pointer to buffer to read page data into. Must be page length in size.
+		 * @returns True if read was successful. False if no page available or error.
 		 */
-		void readPage(uint8_t pageId, uint8_t* pageBuffer);
+		bool readPage(uint8_t pageId, uint8_t* pageBuffer);
 
 		/**
 		 * Write wear balanced page to Eeprom.
 		 * @param pageId Identifier of page to write. This should match the index of the pages defined during construction.
 		 * @param pageData Pointer to page data to write. Must be page length in size.
+		 * @returns True if write was successful.
 		 */
-		void writePage(uint8_t pageId, uint8_t* pageData);
+		bool writePage(uint8_t pageId, uint8_t* pageData);
 
 		/**
 		 * Clear the Eeprom to the given value for the given region.
@@ -119,6 +123,7 @@ class Eeprom
 		 * Independantly verify this EEPROM's meta data.
 		 * @param pages Array of expected wear levelled pages.
 		 * @param pageCount Number of entries in the pages array.
+		 * @returns True if verified.
 		 */
 		bool verifyMetaData(EepromPage* pages, uint8_t pageCount);
 
@@ -143,16 +148,18 @@ class Eeprom
 		 * @param startAddr Address to start writing at.
 		 * @param values Pointer to byte values to write.
 		 * @param count Number of bytes to write.
+		 * @returns True if write was successful.
 		 */
-		virtual void _writeBytes(uint32_t startAddr, uint8_t* values, unsigned count) = 0;
+		virtual bool _writeBytes(uint32_t startAddr, uint8_t* values, unsigned count) = 0;
 
 		/**
 		 * Read bytes from the Eeprom.
 		 * @param startAddr Address to start reading from.
 		 * @param buffer Pointer to byte array to read into.
 		 * @param count Number of bytes to read.
+		 * @returns True if read was successful.
 		 */
-		virtual void _readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count) = 0;
+		virtual bool _readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count) = 0;
 
 	private:
 

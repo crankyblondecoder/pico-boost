@@ -17,7 +17,7 @@ void Eeprom_24CS256::_clear(uint8_t value, unsigned start, unsigned count)
 
 }
 
-void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned count)
+bool Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned count)
 {
 	// NOTE: To reference the device as EEPROM (there are other modes), bits 7-4 must be 1010
 
@@ -64,9 +64,11 @@ void Eeprom_24CS256::_writeBytes(uint32_t startAddr, uint8_t* values, unsigned c
 		// Twc (Write Cycle Time) is 5ms for this chip, as per the datasheet.
 		sleep_ms(5);
 	}
+
+	return response > 0;
 }
 
-void Eeprom_24CS256::_readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
+bool Eeprom_24CS256::_readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
 {
 	// Write address to start reading from with no stop so that subsequent read can "restart" instead of doing a full
 	// stop start cycle.
@@ -88,8 +90,10 @@ void Eeprom_24CS256::_readBytes(uint32_t startAddr, uint8_t* buffer, unsigned co
 	if(response == 2)
 	{
 		// Now read data.
-		i2c_read_timeout_us(_i2cBus, 0x50 | (_i2cAddr & 0x7), buffer, count, false, __calcTimeout(count));
+		response = i2c_read_timeout_us(_i2cBus, 0x50 | (_i2cAddr & 0x7), buffer, count, false, __calcTimeout(count));
 	}
+
+	return response > 0;
 }
 
 unsigned Eeprom_24CS256::__calcTimeout(unsigned numBytesTransf)

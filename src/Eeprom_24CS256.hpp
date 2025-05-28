@@ -42,10 +42,10 @@ class Eeprom_24CS256 : public Eeprom
 		void _clear(uint8_t value, unsigned start, unsigned count);
 
 		// Impl.
-		void _writeBytes(uint32_t startAddr, uint8_t* values, unsigned count);
+		bool _writeBytes(uint32_t startAddr, uint8_t* values, unsigned count);
 
 		// Impl.
-		void _readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count);
+		bool _readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count);
 
 	private:
 

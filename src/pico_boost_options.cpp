@@ -42,6 +42,9 @@ extern bool debug;
 /** Time between display refresh, in milliseconds. */
 #define DISPLAY_FRAME_RATE 50
 
+/** Size of EEPROM page, in bytes, that stores options. */
+#define OPTIONS_EEPROM_PAGE_SIZE 48
+
 /** Button for select/up operations. */
 PicoSwitch* select_up_button;
 
@@ -84,7 +87,7 @@ absolute_time_t nextDisplayFlashToggleTime = 0;
 /** 24CS256 EEPROM responding to address 0 on i2c bus 0. */
 Eeprom_24CS256* eeprom_24CS256;
 
-EepromPage eepromPages[1] = {{32, 64}};
+EepromPage eepromPages[1] = {{OPTIONS_EEPROM_PAGE_SIZE, 64}};
 
 void __runTests();
 
@@ -96,6 +99,18 @@ void display_boost_pid_prop_const();
 void display_boost_pid_integ_const();
 void display_boost_pid_deriv_const();
 void display_boost_max_duty();
+
+/**
+ * Commit the current boost options to EEPROM.
+ * @returns If commit was verified as being successful.
+ */
+bool boost_options_commit();
+
+/**
+ * Read the current boost options from EEPROM and set on other modules as appropriate.
+ * @returns True if read was successful.
+ */
+bool boost_options_read();
 
 // Display character mapping
 // -------------------------
@@ -194,7 +209,8 @@ void boost_options_process_switches()
 			selectUpProced = true;
 			downProced = true;
 
-			// TODO ... Trigger options save to EEPROM.
+			// Save options to EEPROM.
+			boost_options_commit();
 		}
 		else
 		{
@@ -316,7 +332,7 @@ void boost_options_process_switches()
 void boost_options_init()
 {
 	// Create EEPROM instance and initialise it.
-	// Use wear levelled page of size 32.
+	// Current Use wear levelled page of size 32.
 	// Current saved boost options size: 24
 
 	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, eepromPages, 1);
@@ -590,35 +606,143 @@ void display_boost_max_duty()
 	display -> show(disp_data);
 }
 
+/*
+	Current Page entries:
+
+		uint32_t boost_max_kpa_scaled
+		uint32_t boost_de_energise_kpa_scaled
+		uint32_t boost_pid_prop_const_scaled
+		uint32_t boost_pid_integ_const_scaled
+		uint32_t boost_pid_deriv_const_scaled
+		uint32_t boost_max_duty
+*/
+
+bool boost_options_commit()
+{
+	uint8_t readBuffer[OPTIONS_EEPROM_PAGE_SIZE];
+	uint8_t writeBuffer[OPTIONS_EEPROM_PAGE_SIZE];
+
+	// Zero the page so that there is not random data written. This is necessary for the checksum to be accurate.
+	for(int index = 0; index < OPTIONS_EEPROM_PAGE_SIZE; index++)
+	{
+		readBuffer[index] = 0;
+		writeBuffer[index] = 0;
+	}
+
+	// Write 32 bit data to page buffer.
+
+	uint32_t* writeBuffer32 = (uint32_t*) writeBuffer;
+
+	writeBuffer32[1] = boost_control_get_max_kpa_scaled();
+	writeBuffer32[2] = boost_control_get_de_energise_kpa_scaled();
+	writeBuffer32[3] = boost_control_get_pid_prop_const_scaled();
+	writeBuffer32[4] = boost_control_get_pid_integ_const_scaled();
+	writeBuffer32[5] = boost_control_get_pid_deriv_const_scaled();
+	writeBuffer32[6] = boost_control_get_max_duty();
+
+	// Calculate byte wise checksum.
+	uint32_t checksum = 0;
+
+	for(int index = 4; index < OPTIONS_EEPROM_PAGE_SIZE; index++)
+	{
+		checksum += writeBuffer[index];
+	}
+
+	writeBuffer32[0] = checksum;
+
+	// Write page to EEPROM.
+	bool verified = eeprom_24CS256 -> writePage(0, writeBuffer);
+
+	if(verified)
+	{
+		// Verify written data.
+		eeprom_24CS256 -> readPage(0, readBuffer);
+
+		for(int index = 0; index < OPTIONS_EEPROM_PAGE_SIZE; index++)
+		{
+			if(readBuffer[index] != writeBuffer[index])
+			{
+				verified = false;
+				printf("Boost options commit failed verify at index %u of EEPROM page.\n", index);
+				break;
+			}
+		}
+	}
+
+	return verified;
+}
+
+bool boost_options_read()
+{
+	uint8_t buffer[OPTIONS_EEPROM_PAGE_SIZE];
+
+	bool okay = eeprom_24CS256 -> readPage(0, buffer);
+
+	if(okay)
+	{
+		uint32_t* buffer32 = (uint32_t*) buffer;
+
+		// Calculate byte wise checksum and compare.
+		uint32_t checksum = 0;
+
+		for(int index = 4; index < OPTIONS_EEPROM_PAGE_SIZE; index++)
+		{
+			checksum += buffer[index];
+		}
+
+		okay = buffer32[0] == checksum;
+
+		if(okay)
+		{
+			boost_control_set_max_kpa_scaled(buffer32[1]);
+			boost_control_set_de_energise_kpa_scaled(buffer32[2]);
+			boost_control_set_pid_prop_const_scaled(buffer32[3]);
+			boost_control_set_pid_integ_const_scaled(buffer32[4]);
+			boost_control_set_pid_deriv_const_scaled(buffer32[5]);
+			boost_control_set_max_duty(buffer32[6]);
+		}
+		else
+		{
+			printf("Options read checksum failed. Could be bad EEPROM.\n");
+		}
+	}
+
+	return okay;
+}
+
 void __testEeprom()
 {
+	uint32_t readBuffer[OPTIONS_EEPROM_PAGE_SIZE / 4];
+	uint32_t writeBuffer[OPTIONS_EEPROM_PAGE_SIZE / 4];
+
+	for(int index = 0; index < OPTIONS_EEPROM_PAGE_SIZE / 4; index++)
+	{
+		readBuffer[index] = 0;
+		writeBuffer[index] = get_rand_32();
+	}
+
 	// Write random bytes to a range at the end of the EEPROM so that it crosses a 64 byte page boundary.
 	// ie The lowest order 6 bits are the address within a page.
 
-	uint32_t writeBuffer[3];
-
-	writeBuffer[0] = get_rand_32();
-	writeBuffer[1] = get_rand_32();
-	writeBuffer[2] = get_rand_32();
-
 	uint32_t eepromAddr = 0xFFBB;
 
-	eeprom_24CS256 -> writeBytes(eepromAddr, (uint8_t*) writeBuffer, 12);
+	bool allGood = eeprom_24CS256 -> writeBytes(eepromAddr, (uint8_t*)writeBuffer, 12);
 
-	// Read the bytes back and compare.
-
-	uint32_t readBuffer[3];
-
-	eeprom_24CS256 -> readBytes(eepromAddr, (uint8_t*) readBuffer, 12);
-
-	bool allGood = true;
-
-	for(int index = 0; index < 3; index++)
+	if(allGood)
 	{
-		if(writeBuffer[index] != readBuffer[index])
+		// Read the bytes back and compare.
+		allGood = eeprom_24CS256 -> readBytes(eepromAddr, (uint8_t*)readBuffer, 12);
+	}
+
+	if(allGood)
+	{
+		for(int index = 0; index < 3; index++)
 		{
-			allGood = false;
-			break;
+			if(writeBuffer[index] != readBuffer[index])
+			{
+				allGood = false;
+				break;
+			}
 		}
 	}
 
@@ -641,6 +765,59 @@ void __testEeprom()
 	else
 	{
 		printf("EEPROM meta data test passed.\n");
+	}
+
+	// Test writing random page data.
+	allGood = eeprom_24CS256 -> writePage(0, (uint8_t*)writeBuffer);
+
+	if(allGood)
+	{
+		allGood = eeprom_24CS256 -> readPage(0, (uint8_t*)readBuffer);
+
+		if(allGood)
+		{
+			for(int index = 0; index < OPTIONS_EEPROM_PAGE_SIZE / 4; index++)
+			{
+				if(readBuffer[index] != writeBuffer[index])
+				{
+					allGood = false;
+					break;
+				}
+			}
+		}
+	}
+
+	if(!allGood)
+	{
+		printf("EEPROM random page write test failed.\n");
+	}
+	else
+	{
+		printf("EEPROM random page write test passed.\n");
+	}
+
+	// Test commit of actual options data.
+	allGood = boost_options_commit();
+
+	if(!allGood)
+	{
+		printf("EEPROM commit options test failed.\n");
+	}
+	else
+	{
+		printf("EEPROM commit options test passed.\n");
+	}
+
+	// Test read of actual options data.
+	allGood = boost_options_read();
+
+	if(!allGood)
+	{
+		printf("EEPROM read options test failed.\n");
+	}
+	else
+	{
+		printf("EEPROM read options test passed.\n");
 	}
 }
 

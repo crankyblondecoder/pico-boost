@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "Eeprom.hpp"
 
 Eeprom::~Eeprom()
@@ -43,14 +45,14 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 	}
 }
 
-void Eeprom::writeBytes(uint32_t startAddr, uint8_t* values, unsigned count)
+bool Eeprom::writeBytes(uint32_t startAddr, uint8_t* values, unsigned count)
 {
-	_writeBytes(startAddr, values, count);
+	return _writeBytes(startAddr, values, count);
 }
 
-void Eeprom::readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
+bool Eeprom::readBytes(uint32_t startAddr, uint8_t* buffer, unsigned count)
 {
-	_readBytes(startAddr, buffer, count);
+	return _readBytes(startAddr, buffer, count);
 }
 
 void Eeprom::_init()
@@ -185,18 +187,21 @@ void Eeprom::clear(uint8_t value, unsigned start, unsigned count)
 	_clear(value, start, count);
 }
 
-void Eeprom::readPage(uint8_t pageId, uint8_t* page)
+bool Eeprom::readPage(uint8_t pageId, uint8_t* page)
 {
+	// No pages have been written yet for the given page id.
+	if(_pageInstances[pageId].wearIndex == 0) return false;
+
 	uint8_t pageSize = _pages[pageId].pageSize;
 
 	// Get pages start byte address. The +2 is to account for the wear index.
 	uint32_t pageInstanceStartAddr = _pageInstances[pageId].regionStartAddress + (pageSize + 2) *
 		_pageInstances[pageId].pageIndex + 2;
 
-	_readBytes(pageInstanceStartAddr, page, pageSize);
+	return _readBytes(pageInstanceStartAddr, page, pageSize);
 }
 
-void Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
+bool Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 {
 	// Get next wear index to write. Rely on unsigned 16 bit integer rolling over to 0 once maxed out.
 	uint16_t nextWearIndex = _pageInstances[pageId].wearIndex + 1;
@@ -216,13 +221,18 @@ void Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 	uint32_t pageInstanceStartAddr = _pageInstances[pageId].regionStartAddress + (pageSize + 2) * nextPageIndex;
 
 	// Write wear index.
-	_writeBytes(pageInstanceStartAddr, (uint8_t*)&nextWearIndex, 2);
+	bool okay = _writeBytes(pageInstanceStartAddr, (uint8_t*)&nextWearIndex, 2);
 
-	// Write page data.
-	_writeBytes(pageInstanceStartAddr + 2, pageData, pageSize);
+	if(okay)
+	{
+		// Write page data.
+		okay = _writeBytes(pageInstanceStartAddr + 2, pageData, pageSize);
 
-	_pageInstances[pageId].wearIndex = nextWearIndex;
-	_pageInstances[pageId].pageIndex = nextPageIndex;
+		_pageInstances[pageId].wearIndex = nextWearIndex;
+		_pageInstances[pageId].pageIndex = nextPageIndex;
+	}
+
+	return okay;
 }
 
 uint32_t Eeprom::getNonPageRegionStartAddress()
@@ -232,5 +242,39 @@ uint32_t Eeprom::getNonPageRegionStartAddress()
 
 bool Eeprom::verifyMetaData(EepromPage* pages, uint8_t pageCount)
 {
-	// TODO ...
+	uint8_t buffer[2];
+
+	// Read the magic to the first byte.
+	_readBytes(0, buffer, 1);
+	bool verified = buffer[0] = EEPROM_MAGIC;
+
+	if(verified)
+	{
+		// Read the page count from the header.
+		_readBytes(EEPROM_PAGE_COUNT_ADDR, buffer, 1);
+		verified = buffer[0] == EEPROM_PAGE_COUNT_ADDR;
+	}
+
+	uint32_t curHeaderAddr = EEPROM_PAGE_COUNT_ADDR + 1;
+
+	for(unsigned index = 0; index < _pageCount; index++)
+	{
+		uint8_t pageSize = _pages[index].pageSize;
+		uint16_t wearCount = _pages[index].wearCount;
+
+		_readBytes(curHeaderAddr, buffer, 1);
+
+		verified = buffer[0] == pageSize;
+		if(!verified) break;
+
+		_readBytes(curHeaderAddr + 1, buffer, 2);
+
+		verified = *((uint16_t*)buffer) == wearCount;
+		if(!verified) break;
+
+		// Move onto next header entry.
+		curHeaderAddr += 3;
+	}
+
+	return verified;
 }

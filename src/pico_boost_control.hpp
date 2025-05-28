@@ -27,6 +27,11 @@ int boost_control_get_kpa_scaled();
 unsigned boost_control_get_max_kpa_scaled();
 
 /**
+ * Set the maximum boost, relative to std atm. In kPa, scaled by 1000.
+ */
+void boost_control_set_max_kpa_scaled(unsigned maxKpaScaled);
+
+/**
  * Alter the maximum boost, relative to std atm, by adjusting it by a delta.
  * @param maxBoostKpaScaledDelta Delta, scaled by 1000.
  */
@@ -36,6 +41,11 @@ void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta);
  * Get the de-energise boost, relative to std atm. In kPa, scaled by 1000.
  */
 unsigned boost_control_get_de_energise_kpa_scaled();
+
+/**
+ * Set the de-energise boost, relative to std atm. In kPa, scaled by 1000.
+ */
+void boost_control_set_de_energise_kpa_scaled(unsigned kpaScaled);
 
 /**
  * Alter the de-energise boost, relative to std atm, by adjusting it by a delta.
@@ -49,6 +59,11 @@ void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta);
 unsigned boost_control_get_pid_prop_const_scaled();
 
 /**
+ * Set the PID proportional constant. Scaled by 1000.
+ */
+void boost_control_set_pid_prop_const_scaled(unsigned pidPropConstScaled);
+
+/**
  * Alter the PID proportional constant by adjusting it by a delta.
  * @param pidPropConstScaledDelta Delta, scaled by 1000.
  */
@@ -58,6 +73,11 @@ void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta);
  * Get the PID integration constant. Scaled by 1000.
  */
 unsigned boost_control_get_pid_integ_const_scaled();
+
+/**
+ * Set the PID integration constant. Scaled by 1000.
+ */
+void boost_control_set_pid_integ_const_scaled(unsigned pidIntegConstScaled);
 
 /**
  * Alter the PID integration constant by adjusting it by a delta.
@@ -71,6 +91,11 @@ void boost_control_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta);
 unsigned boost_control_get_pid_deriv_const_scaled();
 
 /**
+ * Set the PID derivative constant. Scaled by 1000.
+ */
+void boost_control_set_pid_deriv_const_scaled(unsigned pidDerivConstScaled);
+
+/**
  * Alter the PID derivative constant by adjusting it by a delta.
  * @param pidDerivConstScaledDelta Delta, scaled by 1000.
  */
@@ -80,6 +105,11 @@ void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta);
  * Get maximum duty cycle the solenoid can be set at.
  */
 unsigned boost_control_get_max_duty();
+
+/**
+ * Set maximum duty cycle the solenoid can be set at.
+ */
+void boost_control_set_max_duty(unsigned maxDuty);
 
 /**
  * Alter maximum duty cycle the solenoid can be set at.

@@ -117,6 +117,11 @@ unsigned boost_control_get_max_kpa_scaled()
 	return boost_max_kpa_scaled;
 }
 
+void boost_control_set_max_kpa_scaled(unsigned maxKpaScaled)
+{
+	boost_max_kpa_scaled = maxKpaScaled;
+}
+
 void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta)
 {
 	int newVal = (int)boost_max_kpa_scaled + maxBoostKpaScaledDelta;
@@ -127,6 +132,11 @@ void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta)
 unsigned boost_control_get_de_energise_kpa_scaled()
 {
 	return boost_de_energise_kpa_scaled;
+}
+
+void boost_control_set_de_energise_kpa_scaled(unsigned kpaScaled)
+{
+	boost_de_energise_kpa_scaled = kpaScaled;
 }
 
 void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
@@ -141,6 +151,11 @@ unsigned boost_control_get_pid_prop_const_scaled()
 	return boost_pid_prop_const_scaled;
 }
 
+void boost_control_set_pid_prop_const_scaled(unsigned pidPropConstScaled)
+{
+	boost_pid_prop_const_scaled = pidPropConstScaled;
+}
+
 void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 {
 	int newVal = (int)boost_pid_prop_const_scaled + pidPropConstScaledDelta;
@@ -151,6 +166,11 @@ void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 unsigned boost_control_get_pid_integ_const_scaled()
 {
 	return boost_pid_integ_const_scaled;
+}
+
+void boost_control_set_pid_integ_const_scaled(unsigned pidIntegConstScaled)
+{
+	boost_pid_integ_const_scaled = pidIntegConstScaled;
 }
 
 void boost_control_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
@@ -165,6 +185,11 @@ unsigned boost_control_get_pid_deriv_const_scaled()
 	return boost_pid_deriv_const_scaled;
 }
 
+void boost_control_set_pid_deriv_const_scaled(unsigned pidDerivConstScaled)
+{
+	boost_pid_deriv_const_scaled = pidDerivConstScaled;
+}
+
 void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 {
 	int newVal = (int)boost_pid_deriv_const_scaled + pidDerivConstScaledDelta;
@@ -175,6 +200,11 @@ void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 unsigned boost_control_get_max_duty()
 {
 	return boost_max_duty;
+}
+
+void boost_control_set_max_duty(unsigned maxDuty)
+{
+	boost_max_duty = maxDuty;
 }
 
 void boost_control_alter_max_duty(int maxDutyDelta)
