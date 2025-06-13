@@ -120,6 +120,11 @@ void boost_control_alter_max_duty(int maxDutyDelta);
 /**
  * Get the current boost control solenoid duty cycle. Scaled by 1000.
  */
-unsigned boost_get_current_duty_scaled();
+unsigned boost_control_get_current_duty_scaled();
+
+/**
+ * Run a test cycle with the solenoid valve.
+ */
+void boost_control_test_solenoid();
 
 #endif

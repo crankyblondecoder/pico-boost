@@ -337,6 +337,9 @@ void boost_options_init()
 
 	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, eepromPages, 1);
 
+	// Read initial options.
+	boost_options_read();
+
 	// Create 4 digit display instance.
 	display = new TM1637Display(16, 17);
 
@@ -465,7 +468,7 @@ void display_current_boost()
 
 void display_current_duty()
 {
-	unsigned curDuty = boost_get_current_duty_scaled();
+	unsigned curDuty = boost_control_get_current_duty_scaled();
 
 	// Show max kpa with 0 decimal points.
 	unsigned dispDuty = curDuty / 1000;
@@ -690,7 +693,7 @@ bool boost_options_read()
 			checksum += buffer[index];
 		}
 
-		okay = buffer32[0] == checksum;
+		okay = (buffer32[0] == checksum);
 
 		if(okay)
 		{
@@ -828,7 +831,10 @@ void __runTests()
 
 	printf("Run tests starting.\n");
 
-	__testEeprom();
+	//__testEeprom();
+
+	printf("Testing solenoid valve.\n");
+	boost_control_test_solenoid();
 
 	printf("Run tests finished.\n");
 

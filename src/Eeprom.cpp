@@ -32,7 +32,7 @@ Eeprom::Eeprom(unsigned size, EepromPage* pages, uint8_t pageCount)
 			_pages[index].pageSize = pages[index].pageSize;
 			_pages[index].wearCount = pages[index].wearCount & 0x7FFF;
 
-			_pageInstances[index].pageIndex = 0;
+			_pageInstances[index].physPageIndex = 0;
 			_pageInstances[index].wearIndex = 0;
 			_pageInstances[index].regionStartAddress = curPageRegionStartAddr;
 
@@ -63,7 +63,16 @@ void Eeprom::_init()
 	bool headerMatches = false;
 
 	uint8_t magic;
-	_readBytes(0, &magic, 1);
+	bool okay = _readBytes(0, &magic, 1);
+
+	if(!okay)
+	{
+		// Try again, just one more time.
+		okay = _readBytes(0, &magic, 1);
+	}
+
+	// Simply abort rather than trying to overwrite.
+	if(!okay) return;
 
 	// Current EEPROM byte address being processed.
 	uint32_t curAddr = 0;
@@ -119,9 +128,11 @@ void Eeprom::_init()
 			uint16_t nextWearIndex;
 			uint16_t prevWearIndex = 0;
 
+			curAddr = _pageInstances[descrIndex].regionStartAddress;
+
 			for(unsigned instIndex = 0; instIndex < wearCount; instIndex++)
 			{
-				_readBytes(curAddr + instIndex * pageInstanceSize, (uint8_t*)&nextWearIndex, 1);
+				_readBytes(curAddr + instIndex * pageInstanceSize, (uint8_t*)&nextWearIndex, 2);
 
 				// Wear page is blank. End of search.
 				if(nextWearIndex == 0xFFFF) break;
@@ -131,9 +142,12 @@ void Eeprom::_init()
 
 				if(prevWearIndex == 0 || nextWearIndex == prevWearIndex + 1)
 				{
-					_pageInstances[instIndex].pageIndex = instIndex;
-					_pageInstances[instIndex].wearIndex = nextWearIndex;
-
+					// Found more recent page instance.
+					_pageInstances[descrIndex].physPageIndex = instIndex;
+					_pageInstances[descrIndex].wearIndex = nextWearIndex;
+				}
+				else
+				{
 					break;
 				}
 
@@ -180,6 +194,8 @@ void Eeprom::_init()
 			curPageRegionAddr += pageRegionAllocSize;
 		}
 	}
+
+	_pagesInitialised = true;
 }
 
 void Eeprom::clear(uint8_t value, unsigned start, unsigned count)
@@ -189,20 +205,22 @@ void Eeprom::clear(uint8_t value, unsigned start, unsigned count)
 
 bool Eeprom::readPage(uint8_t pageId, uint8_t* page)
 {
-	// No pages have been written yet for the given page id.
-	if(_pageInstances[pageId].wearIndex == 0) return false;
+	// Page subsystem not initialised or no pages have been written yet for the given page id.
+	if(!_pagesInitialised || _pageInstances[pageId].wearIndex == 0) return false;
 
 	uint8_t pageSize = _pages[pageId].pageSize;
 
 	// Get pages start byte address. The +2 is to account for the wear index.
 	uint32_t pageInstanceStartAddr = _pageInstances[pageId].regionStartAddress + (pageSize + 2) *
-		_pageInstances[pageId].pageIndex + 2;
+		_pageInstances[pageId].physPageIndex + 2;
 
 	return _readBytes(pageInstanceStartAddr, page, pageSize);
 }
 
 bool Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 {
+	if(!_pagesInitialised) return false;
+
 	// Get next wear index to write. Rely on unsigned 16 bit integer rolling over to 0 once maxed out.
 	uint16_t nextWearIndex = _pageInstances[pageId].wearIndex + 1;
 
@@ -210,7 +228,7 @@ bool Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 	if(nextWearIndex == 0) nextWearIndex++;
 
 	// Find the next page index to write to. Check for "no pages written yet".
-	uint16_t nextPageIndex = _pageInstances[pageId].wearIndex == 0 ? 0 : _pageInstances[pageId].pageIndex + 1;
+	uint16_t nextPageIndex = _pageInstances[pageId].wearIndex == 0 ? 0 : _pageInstances[pageId].physPageIndex + 1;
 
 	// Check for whether to go back to writing first wear page.
 	if(nextPageIndex >= _pages[pageId].wearCount) nextPageIndex = 0;
@@ -229,7 +247,7 @@ bool Eeprom::writePage(uint8_t pageId, uint8_t* pageData)
 		okay = _writeBytes(pageInstanceStartAddr + 2, pageData, pageSize);
 
 		_pageInstances[pageId].wearIndex = nextWearIndex;
-		_pageInstances[pageId].pageIndex = nextPageIndex;
+		_pageInstances[pageId].physPageIndex = nextPageIndex;
 	}
 
 	return okay;

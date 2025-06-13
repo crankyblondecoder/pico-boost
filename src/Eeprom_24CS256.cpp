@@ -98,5 +98,5 @@ bool Eeprom_24CS256::_readBytes(uint32_t startAddr, uint8_t* buffer, unsigned co
 
 unsigned Eeprom_24CS256::__calcTimeout(unsigned numBytesTransf)
 {
-	return READ_WRITE_TIMEOUT_OVERHEAD + numBytesTransf * PER_BYTE_TIMEOUT_US;
+	return (READ_WRITE_TIMEOUT_OVERHEAD + numBytesTransf) * PER_BYTE_TIMEOUT_US;
 }

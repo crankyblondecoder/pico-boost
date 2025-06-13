@@ -10,8 +10,8 @@ PicoPwm::~PicoPwm()
 {
 }
 
-PicoPwm::PicoPwm(int chanAGpio, int chanBGpio, float initFreq, float initDutyCycleA, float initDutyCycleB, bool phaseCorrect)
-	: _chanAGpio(chanAGpio), _chanBGpio(chanBGpio)
+PicoPwm::PicoPwm(int chanAGpio, int chanBGpio, float initFreq, float initDutyCycleA, float initDutyCycleB, bool phaseCorrect,
+	bool initDisableState) : _chanAGpio(chanAGpio), _chanBGpio(chanBGpio)
 {
 	if(chanAGpio > -1) gpio_set_function(chanAGpio, GPIO_FUNC_PWM);
     if(chanBGpio > -1) gpio_set_function(chanBGpio, GPIO_FUNC_PWM);
@@ -35,9 +35,14 @@ PicoPwm::PicoPwm(int chanAGpio, int chanBGpio, float initFreq, float initDutyCyc
 
 	__setFreq(initFreq);
 
-	__enable();
-
 	__setDuty(initDutyCycleA, initDutyCycleB);
+
+	__disable(initDisableState);
+}
+
+bool PicoPwm::getEnabled()
+{
+	return _enabled;
 }
 
 void PicoPwm::enable()
@@ -51,6 +56,8 @@ void PicoPwm::__enable()
 	if(_chanBGpio > -1) gpio_set_outover(_chanBGpio, GPIO_OVERRIDE_NORMAL);
 
 	if(_sliceNumber > -1) pwm_set_enabled(_sliceNumber, true);
+
+	_enabled = true;
 }
 
 void PicoPwm::disable(bool setHigh)
@@ -64,7 +71,10 @@ void PicoPwm::__disable(bool setHigh)
 
 	if(_chanAGpio > -1) gpio_set_outover(_chanAGpio, setHigh ? GPIO_OVERRIDE_HIGH : GPIO_OVERRIDE_LOW);
 	if(_chanBGpio > -1) gpio_set_outover(_chanBGpio, setHigh ? GPIO_OVERRIDE_HIGH : GPIO_OVERRIDE_LOW);
+
+	_enabled = false;
 }
+
 void PicoPwm::setFreq(float freq)
 {
 	__setFreq(freq);

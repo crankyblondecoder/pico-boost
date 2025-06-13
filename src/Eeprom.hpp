@@ -32,7 +32,7 @@ struct EepromPage
 struct EepromPageInstance
 {
 	/**
-	 * Wear index associated with page. This starts at 1 for valid indexes and increases as pages are written on a
+	 * Wear index associated with physical page. This starts at 1 for valid indexes and increases as pages are written on a
 	 * per page definition basis.
 	 * A value of 0 indicates that there are no pages present for the associated page description.
 	 */
@@ -42,7 +42,7 @@ struct EepromPageInstance
 	 * The physical page index the page instance is stored in.
 	 * This will be between 0 and wearCount - 1 (from the page definition).
 	 */
-	uint16_t pageIndex;
+	uint16_t physPageIndex;
 
 	/**
 	 * The byte address of the start of the wear levelled region for the page.
@@ -165,6 +165,9 @@ class Eeprom
 
 		/** Size of EEPROM in bytes. */
 		unsigned _eepromSize;
+
+		/** Indicates that the wear level paging system has been successfully initialised. */
+		bool _pagesInitialised = false;
 
 		/** Wear levelled page descriptors. */
 		EepromPage* _pages;

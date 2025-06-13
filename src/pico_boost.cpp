@@ -27,8 +27,7 @@ bool debug = false;
 void __core1_entry();
 
 /**
- * Program for Pi Pico that interfaces to cars electrical signals and can either provide data to another display system
- * or drive physical gauges directly.
+ * Program for Pi Pico that controls boost.
  */
 int main()
 {

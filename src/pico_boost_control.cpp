@@ -3,10 +3,21 @@
 #include "BoschMap_0261230119.hpp"
 #include "PicoAdcReader.hpp"
 
+#include "PicoPwm.hpp"
+
 #include "pico_boost_control.hpp"
 
 /** Standard atmospheric pressure in Pascals. */
 #define STD_ATM_PRESSURE 101325
+
+/** Frequency of control solenoid. */
+#define CONTROL_SOLENOID_FREQ 30
+
+/** GPIO That channel A of the PWM slice used to control the solenoid. */
+#define CONTROL_SOLENOID_CHAN_A_GPIO 20 // Slice 2
+
+/** Gate state to use when disabling PWM. */
+#define CONTROL_SOLENOID_DISABLE_GATE_STATE false
 
 /** Bosch map sensor to read current turbo pressure from. */
 BoschMap_0261230119* boost_map_sensor;
@@ -43,13 +54,24 @@ uint32_t boost_max_duty = 95;
 /** Current duty cycle. Scaled by 1000. */
 uint32_t boost_current_duty_scaled = 0;
 
+/** The next time the boost map sensor is latched (reads and stores the current value of the sensor) */
 absolute_time_t next_boost_latch_time;
+
+/** The next time the current boost value is read. This is typically averaged across several latched values. */
 absolute_time_t next_boost_read_time;
 
+/** The last time the solenoid duty cycle was processed. */
 absolute_time_t last_solenoid_proc_time;
+
+/** PWM control. Assume N Channel Mosfet (IRLZ34N) is being used and the gate must be pulled to ground. */
+PicoPwm pwmControl(CONTROL_SOLENOID_CHAN_A_GPIO, CONTROL_SOLENOID_CHAN_A_GPIO + 1, CONTROL_SOLENOID_FREQ, 0, 0, true,
+	CONTROL_SOLENOID_DISABLE_GATE_STATE);
 
 /** Current energised state of the boost control solenoid. Does NOT include 0% duty cycle. */
 bool energised = false;
+
+/** Whether test mode is currently active. */
+bool testMode = false;
 
 extern bool debug;
 
@@ -160,7 +182,7 @@ void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 {
 	int newVal = (int)boost_pid_prop_const_scaled + pidPropConstScaledDelta;
 
-	if(newVal < 0) boost_pid_prop_const_scaled = 0;
+	if(newVal > 0) boost_pid_prop_const_scaled = newVal; else boost_pid_prop_const_scaled = 0;
 }
 
 unsigned boost_control_get_pid_integ_const_scaled()
@@ -216,12 +238,47 @@ void boost_control_alter_max_duty(int maxDutyDelta)
 	if(boost_max_duty > 100) boost_max_duty = 100;
 }
 
-unsigned boost_get_current_duty_scaled()
+unsigned boost_control_get_current_duty_scaled()
 {
 	return boost_current_duty_scaled;
 }
 
+void set_solenoid_duty(float duty)
+{
+
+}
+
+void enable_solenoid()
+{
+	pwmControl.enable();
+}
+
+void disable_solenoid()
+{
+	pwmControl.disable(CONTROL_SOLENOID_DISABLE_GATE_STATE);
+}
+
 void process_control_solenoid()
 {
-	// TODO ...
+	if(!testMode)
+	{
+		// TODO ...
+	}
+}
+
+void boost_control_test_solenoid()
+{
+	testMode = true;
+
+	enable_solenoid();
+
+	for(float duty = 0; duty < 100; duty += 5)
+	{
+		set_solenoid_duty(duty);
+		sleep_ms(1000);
+	}
+
+	disable_solenoid();
+
+	testMode = false;
 }
