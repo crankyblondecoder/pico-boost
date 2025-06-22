@@ -243,9 +243,12 @@ unsigned boost_control_get_current_duty_scaled()
 	return boost_current_duty_scaled;
 }
 
+/**
+ * Set percentage duty cycle.
+ */
 void set_solenoid_duty(float duty)
 {
-
+	pwmControl.setDuty(duty, -1);
 }
 
 void enable_solenoid()
@@ -272,11 +275,18 @@ void boost_control_test_solenoid()
 
 	enable_solenoid();
 
-	for(float duty = 0; duty < 100; duty += 5)
+	for(float duty = 0; duty < 100; duty += 1)
 	{
 		set_solenoid_duty(duty);
-		sleep_ms(1000);
+		sleep_ms(100);
 	}
+
+	/*
+	set_solenoid_duty(5);
+	sleep_ms(60000);
+	set_solenoid_duty(0);
+	sleep_ms(1000);
+	*/
 
 	disable_solenoid();
 
