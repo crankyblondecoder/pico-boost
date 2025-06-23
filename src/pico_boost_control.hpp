@@ -22,6 +22,12 @@ bool boost_control_max_boost_reached();
 int boost_control_get_kpa_scaled();
 
 /**
+ * Get the current boost value, relative to std atm, as measured from the MAP sensor. In PSI, scaled by 10.
+ * Can be negative for below std atm.
+ */
+int boost_control_get_psi_scaled();
+
+/**
  * Get the maximum boost, relative to std atm. In kPa, scaled by 1000.
  */
 unsigned boost_control_get_max_kpa_scaled();

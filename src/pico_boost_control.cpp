@@ -10,6 +10,9 @@
 /** Standard atmospheric pressure in Pascals. */
 #define STD_ATM_PRESSURE 101325
 
+/** Conversion factor of KPa to PSI. */
+#define KPA_TO_PSI 0.145038
+
 /** Frequency of control solenoid. */
 #define CONTROL_SOLENOID_FREQ 30
 
@@ -132,6 +135,11 @@ bool boost_control_max_boost_reached()
 int boost_control_get_kpa_scaled()
 {
 	return boost_map_kpa_scaled - STD_ATM_PRESSURE;
+}
+
+int boost_control_get_psi_scaled()
+{
+	return (boost_control_get_kpa_scaled() / (float)1000.0) * KPA_TO_PSI * 10;
 }
 
 unsigned boost_control_get_max_kpa_scaled()

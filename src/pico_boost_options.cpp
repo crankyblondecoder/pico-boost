@@ -15,9 +15,6 @@ extern bool debug;
 /** Amount of time that both buttons have to be pressed to invoke a test pass. */
 #define TEST_START_TIMEOUT 5000
 
-/** Conversion factor of KPa to PSI. */
-#define KPA_TO_PSI 0.145038
-
 /** Up and select button. */
 #define UP_SELECT_BUTTON_GPIO 14
 
@@ -66,8 +63,11 @@ uint8_t disp_data[4];
 /** Next render time for display. Stops flickering of the display when values change rapidly. */
 absolute_time_t nextDisplayRenderTime;
 
+/** The default selected option. */
+int default_select_option = CURRENT_BOOST_PSI;
+
 /** Currently selected option. */
-int cur_selected_option = CURRENT_BOOST;
+int cur_selected_option = default_select_option;
 
 /** Whether edit mode is active. */
 bool edit_mode = false;
@@ -91,7 +91,8 @@ EepromPage eepromPages[1] = {{OPTIONS_EEPROM_PAGE_SIZE, 64}};
 
 void __runTests();
 
-void display_current_boost();
+void display_current_boost_kpa();
+void display_current_boost_psi();
 void display_current_duty();
 void display_max_boost();
 void display_boost_de_energise();
@@ -155,7 +156,11 @@ void boost_options_process_switches()
 		select_up_button -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
 		down_button -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT)
 	{
-		if(cur_selected_option != CURRENT_DUTY) cur_selected_option = CURRENT_BOOST;
+		if(cur_selected_option != CURRENT_DUTY && cur_selected_option != CURRENT_BOOST_PSI &&
+			cur_selected_option != CURRENT_BOOST_KPA)
+		{
+			cur_selected_option = default_select_option;
+		}
 
 		edit_mode = false;
 
@@ -180,7 +185,7 @@ void boost_options_process_switches()
 				// Change to the next state on select button release.
 				cur_selected_option++;
 
-				if(cur_selected_option >= SELECT_OPTION_LAST) cur_selected_option = CURRENT_BOOST;
+				if(cur_selected_option >= SELECT_OPTION_LAST) cur_selected_option = CURRENT_BOOST_PSI;
 
 				selectUpProced = true;
 				downProced = true;
@@ -388,9 +393,14 @@ void boost_options_poll()
 
 		switch(cur_selected_option)
 		{
-			case CURRENT_BOOST:
+			case CURRENT_BOOST_KPA:
 
-				display_current_boost();
+				display_current_boost_kpa();
+				break;
+
+			case CURRENT_BOOST_PSI:
+
+				display_current_boost_psi();
 				break;
 
 			case CURRENT_DUTY:
@@ -431,7 +441,7 @@ void boost_options_poll()
 	}
 }
 
-void display_current_boost()
+void display_current_boost_kpa()
 {
 	int boost_kpa_scaled = boost_control_get_kpa_scaled();
 
@@ -460,6 +470,44 @@ void display_current_boost()
 		else
 		{
 			disp_data[0] = 0;
+		}
+	}
+
+	display -> show(disp_data);
+}
+
+void display_current_boost_psi()
+{
+	int boost_psi_scaled = boost_control_get_psi_scaled();
+
+	// Show psi with 0 decimal points.
+	int dispPsi = boost_psi_scaled / 10;
+	if(dispPsi < 0) dispPsi *= -1;
+
+	// Display just 2 digits of psi value.
+	display -> encodeNumber(dispPsi, 2, 3, disp_data);
+
+	// Default to nothing in the left most char for now.
+	disp_data[0] = 0;
+
+	if(boost_control_max_boost_reached())
+	{
+		disp_data[0] = display -> encodeAlpha('L');
+	}
+	else if(boost_control_is_energised())
+	{
+		disp_data[0] = display -> encodeAlpha('E');
+	}
+	else
+	{
+		// Accounts for flutter around zero. ie Stops negative sign from flashing randomly.
+		if(boost_psi_scaled <= -10)
+		{
+			disp_data[1] = display -> encodeAlpha('-');
+		}
+		else
+		{
+			disp_data[1] = 0;
 		}
 	}
 
