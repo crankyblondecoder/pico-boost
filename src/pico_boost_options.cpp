@@ -357,10 +357,10 @@ void boost_options_init()
 	display -> show(disp_data);
 
 	// Up/Select mode button.
-	select_up_button = new PicoSwitch(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+	select_up_button = new PicoSwitch(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
 
 	// Down button.
-	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
 
 	nextDisplayRenderTime = get_absolute_time();
 
@@ -878,6 +878,9 @@ void __runTests()
 	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, true);
 
 	printf("Run tests starting.\n");
+
+	printf("Map supply V: %.3f\n", boost_map_read_supply_voltage());
+	printf("Map sensor V: %.3f\n", boost_map_read_sensor_voltage());
 
 	//__testEeprom();
 

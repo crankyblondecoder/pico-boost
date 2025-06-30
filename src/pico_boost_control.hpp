@@ -133,4 +133,14 @@ unsigned boost_control_get_current_duty_scaled();
  */
 void boost_control_test_solenoid();
 
+/**
+ * Read the voltage supplied to the map sensor.
+ */
+double boost_map_read_supply_voltage();
+
+/**
+ * Read the current map sensor voltage.
+ */
+double boost_map_read_sensor_voltage();
+
 #endif

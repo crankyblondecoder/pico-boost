@@ -43,6 +43,16 @@ class BoschMap_0261230119
 		 */
 		double readPsi();
 
+		/**
+		 * Read the voltage supplied to the sensor.
+		 */
+		double readSupplyVoltage();
+
+		/**
+		 * Read the current sensor voltage.
+		 */
+		double readSensorVoltage();
+
 	private:
 
 		/**

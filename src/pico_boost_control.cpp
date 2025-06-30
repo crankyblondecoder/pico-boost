@@ -22,6 +22,12 @@
 /** Gate state to use when disabling PWM. */
 #define CONTROL_SOLENOID_DISABLE_GATE_STATE false
 
+/**
+ * De-energise/energise hysteresis to stop rapid flucations with enable/disable of PWM around that point.
+ * In KPA, scaled by 1000.
+ */
+#define DE_ENERGISE_HYSTERESIS 5000
+
 /** Bosch map sensor to read current turbo pressure from. */
 BoschMap_0261230119* boost_map_sensor;
 
@@ -42,11 +48,23 @@ uint32_t boost_max_kpa_scaled = 100000;
  */
 uint32_t boost_de_energise_kpa_scaled = 50000;
 
-/** PID proportional constant Kp. Scaled by 1000. */
-uint32_t boost_pid_prop_const_scaled = 500;
+/** Whether the solenoid is currently energised. ie PWM is active. */
+bool boost_energised = false;
+
+/**
+ * The pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is controlled by
+ * the PID algorithm. Scaled by 1000.
+ */
+uint32_t boost_pid_active_kpa_scaled = 75000;
+
+/**
+ * PID proportional constant Kp. Scaled by 1000.
+ * This initial value should cause an above max duty when the PID algorithm initially kicks in.
+ */
+uint32_t boost_pid_prop_const_scaled = 6000;
 
 /** PID integration constant Ki. Scaled by 1000. */
-uint32_t boost_pid_integ_const_scaled = 500;
+uint32_t boost_pid_integ_const_scaled = 1000;
 
 /** PID derivative constant Kd. Scaled by 1000. */
 uint32_t boost_pid_deriv_const_scaled = 500;
@@ -74,7 +92,7 @@ PicoPwm pwmControl(CONTROL_SOLENOID_CHAN_A_GPIO, CONTROL_SOLENOID_CHAN_A_GPIO + 
 bool energised = false;
 
 /** Whether test mode is currently active. */
-bool testMode = false;
+bool test_mode = false;
 
 extern bool debug;
 
@@ -271,15 +289,43 @@ void disable_solenoid()
 
 void process_control_solenoid()
 {
-	if(!testMode)
+	if(!test_mode)
 	{
+		uint32_t curBoostScaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
+
+		// Apply hysterisis to enable/disable about de-energise point.
+		if(boost_energised && curBoostScaled < (boost_de_energise_kpa_scaled - DE_ENERGISE_HYSTERESIS))
+		{
+			boost_energised = false;
+			disable_solenoid();
+		}
+		else if(!boost_energised && curBoostScaled > boost_de_energise_kpa_scaled)
+		{
+			boost_energised = true;
+			enable_solenoid();
+		}
+
+		if(boost_energised)
+		{
+			if(curBoostScaled < boost_pid_active_kpa_scaled)
+			{
+				// Just pin at max duty.
+				set_solenoid_duty(boost_max_duty);
+			}
+			else
+			{
+				// TODO ... PID control
+				blah;
+			}
+		}
+
 		// TODO ...
 	}
 }
 
 void boost_control_test_solenoid()
 {
-	testMode = true;
+	test_mode = true;
 
 	enable_solenoid();
 
@@ -298,5 +344,15 @@ void boost_control_test_solenoid()
 
 	disable_solenoid();
 
-	testMode = false;
+	test_mode = false;
+}
+
+double boost_map_read_supply_voltage()
+{
+	return boost_map_sensor -> readSupplyVoltage();
+}
+
+double boost_map_read_sensor_voltage()
+{
+	return boost_map_sensor -> readSensorVoltage();
 }

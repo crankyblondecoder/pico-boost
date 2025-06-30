@@ -47,3 +47,13 @@ double BoschMap_0261230119::__readKpa()
 	// This is the resultant equation from the Bosch 0261230119 map sensor data sheet.
 	return ((boschMapOut / vSys) - _bosch_map_c0) / _bosch_map_c1;
 }
+
+double BoschMap_0261230119::readSupplyVoltage()
+{
+	return _vSysAdcReader -> read();
+}
+
+double BoschMap_0261230119::readSensorVoltage()
+{
+	return _picoAdcReader -> read();
+}
