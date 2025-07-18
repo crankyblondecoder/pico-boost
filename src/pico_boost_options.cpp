@@ -21,6 +21,9 @@ extern bool debug;
 /** Down button */
 #define DOWN_BUTTON_GPIO 15
 
+/** Min brightness */
+#define MIN_BRIGHTNESS_GPIO 22
+
 /** Amount of time of inactivity, in milliseconds, before the current mode ends and the system returns to default. */
 #define MODE_COMPLETE_TIMEOUT 5000
 
@@ -54,8 +57,20 @@ PicoSwitch* down_button;
 /** The last _fully_ processed down button state index. */
 unsigned last_proc_down_button_state_index = 0;
 
+/** Detect gpio being asserted for minimum display brightness as a switch. */
+PicoSwitch* min_brightness;
+
 /** 4 Digit display. */
 TM1637Display* display;
+
+/** Displays maximum brightness. 0-7. */
+uint8_t display_max_brightness;
+
+/** Displays minimum brightness. 0-7. */
+uint8_t display_min_brightness;
+
+/** Whether to use minimum brightness for display. */
+bool display_use_min_brightness = false;
 
 /** Data transfered to display. */
 uint8_t disp_data[4];
@@ -100,6 +115,8 @@ void display_boost_pid_prop_const();
 void display_boost_pid_integ_const();
 void display_boost_pid_deriv_const();
 void display_boost_max_duty();
+void display_show_max_brightness();
+void display_show_min_brightness();
 
 /**
  * Commit the current boost options to EEPROM.
@@ -124,6 +141,8 @@ bool boost_options_read();
 // J: BOOST_PID_INTEG_CONST
 // D: BOOST_PID_DERIV_CONST
 // Q: BOOST_MAX_DUTY
+// O: DISPLAY_MAX_BRIGHTNESS
+// R: DISPLAY_MIN_BRIGHTNESS
 
 void boost_options_process_switches()
 {
@@ -324,6 +343,20 @@ void boost_options_process_switches()
 						// Boost solenoid maximum duty cycle. Resolution 1.
 						boost_control_alter_max_duty(delta);
 						break;
+
+					case DISPLAY_MAX_BRIGHTNESS:
+
+						// Maximum brightness 0-7.
+						display_max_brightness += delta;
+						if(display_max_brightness > 7) display_max_brightness = 7;
+						break;
+
+					case DISPLAY_MIN_BRIGHTNESS:
+
+						// Minimum brightness 0-7.
+						display_min_brightness += delta;
+						if(display_min_brightness > 7) display_min_brightness = 7;
+						break;
 				}
 			}
 		}
@@ -362,6 +395,9 @@ void boost_options_init()
 	// Down button.
 	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
 
+	// Min brightness.
+	min_brightness = new PicoSwitch(MIN_BRIGHTNESS_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+
 	nextDisplayRenderTime = get_absolute_time();
 
 	nextDisplayFlashToggleTime = nextDisplayRenderTime;
@@ -380,6 +416,16 @@ void boost_options_poll()
 
 	if(debug || curTime >= nextDisplayRenderTime)
 	{
+		// Set brightness of display.
+		if(display_use_min_brightness)
+		{
+			display -> setBrightness(display_min_brightness);
+		}
+		else
+		{
+			display -> setBrightness(display_max_brightness);
+		}
+
 		// Process current display flashing toggle.
 		if(curTime > nextDisplayFlashToggleTime) {
 
@@ -436,6 +482,16 @@ void boost_options_poll()
 			case BOOST_MAX_DUTY:
 
 				display_boost_max_duty();
+				break;
+
+			case DISPLAY_MAX_BRIGHTNESS:
+
+				display_show_max_brightness();
+				break;
+
+			case DISPLAY_MIN_BRIGHTNESS:
+
+				display_show_min_brightness();
 				break;
 		}
 	}
@@ -657,6 +713,25 @@ void display_boost_max_duty()
 	display -> show(disp_data);
 }
 
+void display_show_max_brightness()
+{
+	// Show with 0 decimal points.
+	unsigned dispVal = display_max_brightness;
+
+	display -> encodeNumber(dispVal, 3, 3, disp_data);
+
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('O');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
+
+	display -> show(disp_data);
+}
+
 /*
 	Current Page entries:
 
@@ -666,6 +741,8 @@ void display_boost_max_duty()
 		uint32_t boost_pid_integ_const_scaled
 		uint32_t boost_pid_deriv_const_scaled
 		uint32_t boost_max_duty
+		uint8_t display_max_brightness
+		uint8_t display_max_brightness
 */
 
 bool boost_options_commit()
@@ -684,12 +761,16 @@ bool boost_options_commit()
 
 	uint32_t* writeBuffer32 = (uint32_t*) writeBuffer;
 
+	// Remember that the first entry in the buffer is the checksum.
+
 	writeBuffer32[1] = boost_control_get_max_kpa_scaled();
 	writeBuffer32[2] = boost_control_get_de_energise_kpa_scaled();
 	writeBuffer32[3] = boost_control_get_pid_prop_const_scaled();
 	writeBuffer32[4] = boost_control_get_pid_integ_const_scaled();
 	writeBuffer32[5] = boost_control_get_pid_deriv_const_scaled();
 	writeBuffer32[6] = boost_control_get_max_duty();
+	writeBuffer[28] = display_max_brightness;
+	writeBuffer[29] = display_min_brightness;
 
 	// Calculate byte wise checksum.
 	uint32_t checksum = 0;
@@ -751,6 +832,8 @@ bool boost_options_read()
 			boost_control_set_pid_integ_const_scaled(buffer32[4]);
 			boost_control_set_pid_deriv_const_scaled(buffer32[5]);
 			boost_control_set_max_duty(buffer32[6]);
+			display_max_brightness = buffer[28];
+			display_min_brightness = buffer[29];
 		}
 		else
 		{

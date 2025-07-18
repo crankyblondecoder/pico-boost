@@ -48,14 +48,31 @@ uint32_t boost_max_kpa_scaled = 100000;
  */
 uint32_t boost_de_energise_kpa_scaled = 50000;
 
-/** Whether the solenoid is currently energised. ie PWM is active. */
-bool boost_energised = false;
-
 /**
  * The pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is controlled by
  * the PID algorithm. Scaled by 1000.
  */
 uint32_t boost_pid_active_kpa_scaled = 75000;
+
+/**
+ * The baseline solenoid duty cycle. This is the value that corresponds to a PID error of 0.
+ * If this value is too small, it will cause the boost to undershoot the target. If it is too large, it will overshoot.
+ * It is probably also dependent on the turbine inlet temperature which changes the characteristics of the waste gate in
+ * terms of how much it opening affects the turbine power output.
+ */
+uint32_t boost_pid_baseline_duty_scaled = 50000;
+
+/** Whether the solenoid is currently energised. ie PWM is active. */
+bool boost_energised = false;
+
+/** Whether solenoid is being controlled by the PID algorithm. */
+bool boost_pid_active = false;
+
+/** Previous error for the PID algorithm. */
+float boost_pid_prev_error = 0;
+
+/** Current integral value for the PID algorithm. */
+float boost_pid_integ = 0;
 
 /**
  * PID proportional constant Kp. Scaled by 1000.
@@ -119,7 +136,7 @@ void boost_control_poll()
 
 	if(debug || curTime >= next_boost_latch_time)
 	{
-		// Latch data at approximately 1000hz
+		// Latch data at approximately 1000hz. This is a higher frequency to allow for averaging to be effective.
 		next_boost_latch_time = delayed_by_ms(next_boost_latch_time, 1);
 
 		boost_map_sensor -> latch();
@@ -311,15 +328,27 @@ void process_control_solenoid()
 			{
 				// Just pin at max duty.
 				set_solenoid_duty(boost_max_duty);
+
+				boost_pid_active = false;
 			}
 			else
 			{
+				if(!boost_pid_active)
+				{
+					// TODO ... Setup initial PID vars.
+					//blah;
+
+					boost_pid_active = true;
+				}
+
 				// TODO ... PID control
-				blah;
+				//blah;
 			}
 		}
-
-		// TODO ...
+		else
+		{
+			boost_pid_active = false;
+		}
 	}
 }
 

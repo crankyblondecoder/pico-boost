@@ -40,6 +40,12 @@ enum SelectOption
 	/** Boost control solenoid maximum duty cycle. In %. */
 	BOOST_MAX_DUTY,
 
+	/** Maximum brightness of display. */
+	DISPLAY_MAX_BRIGHTNESS,
+
+	/** Minimum brightness of display. */
+	DISPLAY_MIN_BRIGHTNESS,
+
 	/** Not an option, just used to indicate enum length. */
 	SELECT_OPTION_LAST
 };
