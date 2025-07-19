@@ -58,16 +58,16 @@ PicoSwitch* down_button;
 unsigned last_proc_down_button_state_index = 0;
 
 /** Detect gpio being asserted for minimum display brightness as a switch. */
-PicoSwitch* min_brightness;
+PicoSwitch* min_brightness_input;
 
 /** 4 Digit display. */
 TM1637Display* display;
 
 /** Displays maximum brightness. 0-7. */
-uint8_t display_max_brightness;
+uint8_t display_max_brightness = 7;
 
 /** Displays minimum brightness. 0-7. */
-uint8_t display_min_brightness;
+uint8_t display_min_brightness = 4;
 
 /** Whether to use minimum brightness for display. */
 bool display_use_min_brightness = false;
@@ -389,6 +389,8 @@ void boost_options_init()
 
 	display -> show(disp_data);
 
+	display -> setBrightness(display_max_brightness);
+
 	// Up/Select mode button.
 	select_up_button = new PicoSwitch(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
 
@@ -396,7 +398,7 @@ void boost_options_init()
 	down_button = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
 
 	// Min brightness.
-	min_brightness = new PicoSwitch(MIN_BRIGHTNESS_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+	min_brightness_input = new PicoSwitch(MIN_BRIGHTNESS_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
 	nextDisplayRenderTime = get_absolute_time();
 
@@ -408,6 +410,9 @@ void boost_options_poll()
 	// Note: Make sure the polling frequency is high enough that switches can debounce.
 	select_up_button -> poll();
 	down_button -> poll();
+	min_brightness_input -> poll();
+
+	display_use_min_brightness = min_brightness_input -> getSwitchState();
 
 	boost_options_process_switches();
 
@@ -723,6 +728,25 @@ void display_show_max_brightness()
 	if(!edit_mode || displayFlashOn)
 	{
 		disp_data[0] = display -> encodeAlpha('O');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
+
+	display -> show(disp_data);
+}
+
+void display_show_min_brightness()
+{
+	// Show with 0 decimal points.
+	unsigned dispVal = display_min_brightness;
+
+	display -> encodeNumber(dispVal, 3, 3, disp_data);
+
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('R');
 	}
 	else
 	{
