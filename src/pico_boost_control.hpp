@@ -108,20 +108,36 @@ void boost_control_set_pid_deriv_const_scaled(unsigned pidDerivConstScaled);
 void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta);
 
 /**
- * Get maximum duty cycle the solenoid can be set at.
+ * Get maximum duty cycle the solenoid can be set at. Scaled by 10.
  */
-unsigned boost_control_get_max_duty();
+unsigned boost_control_get_max_duty_scaled();
 
 /**
- * Set maximum duty cycle the solenoid can be set at.
+ * Set maximum duty cycle the solenoid can be set at. Scaled by 10.
  */
-void boost_control_set_max_duty(unsigned maxDuty);
+void boost_control_set_max_duty_scaled(unsigned maxDuty);
 
 /**
  * Alter maximum duty cycle the solenoid can be set at.
- * @param maxDutyDelta Delta, not scaled.
+ * @param maxDutyDelta Delta, scaled by 10.
  */
-void boost_control_alter_max_duty(int maxDutyDelta);
+void boost_control_alter_max_duty_scaled(int maxDutyDelta);
+
+/**
+ * Get zero point duty cycle of the solenoid. Scaled by 10.
+ */
+unsigned boost_control_get_zero_point_duty_scaled();
+
+/**
+ * Set zero point duty cycle of the solenoid. Scaled by 10.
+ */
+void boost_control_set_zero_point_duty_scaled(unsigned zeroPointDuty);
+
+/**
+ * Alter zero point duty cycle of the solenoid.
+ * @param dutyDelta Delta, scaled by 10.
+ */
+void boost_control_alter_zero_point_duty_scaled(int dutyDelta);
 
 /**
  * Get the current boost control solenoid duty cycle. Scaled by 1000.

@@ -217,22 +217,22 @@ uint8_t TM1637Display::encodeAlpha(char character)
 		case 'A':
 			retVal = 0x77;
 			break;
-
+//*
 		case 'b':
 		case 'B':
 			retVal = 0x7C;
 			break;
-
+//*
 		case 'c':
 		case 'C':
 			retVal = 0x39;
 			break;
-
+//*
 		case 'd':
 		case 'D':
 			retVal = 0x5E;
 			break;
-
+//*
 		case 'e':
 		case 'E':
 			retVal = 0x79;
@@ -242,42 +242,42 @@ uint8_t TM1637Display::encodeAlpha(char character)
 		case 'F':
 			retVal = 0x71;
 			break;
-
+//*
 		case 'h':
 		case 'H':
 			retVal = 0x76;
 			break;
-
+//*
 		case 'j':
 		case 'J':
 			retVal = 0x1E;
 			break;
-
+//*
 		case 'l':
 		case 'L':
 			retVal = 0x38;
 			break;
-
+//*
 		case 'o':
 		case 'O':
 			retVal = 0x5C;
 			break;
-
+//*
 		case 'p':
 		case 'P':
 			retVal = 0x73;
 			break;
-
+//*
 		case 'q':
 		case 'Q':
 			retVal = 0x67;
 			break;
-
+//*
 		case 'r':
 		case 'R':
 			retVal = 0x50;
 			break;
-
+//*
 		case 'u':
 		case 'U':
 			retVal = 0x3E;

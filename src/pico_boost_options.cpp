@@ -115,6 +115,7 @@ void display_boost_pid_prop_const();
 void display_boost_pid_integ_const();
 void display_boost_pid_deriv_const();
 void display_boost_max_duty();
+void display_boost_zero_point_duty();
 void display_show_max_brightness();
 void display_show_min_brightness();
 
@@ -141,8 +142,9 @@ bool boost_options_read();
 // J: BOOST_PID_INTEG_CONST
 // D: BOOST_PID_DERIV_CONST
 // Q: BOOST_MAX_DUTY
-// O: DISPLAY_MAX_BRIGHTNESS
-// R: DISPLAY_MIN_BRIGHTNESS
+// R: DISPLAY_MAX_BRIGHTNESS
+// H: DISPLAY_MIN_BRIGHTNESS
+// O: BOOST_ZERO_POINT_DUTY
 
 void boost_options_process_switches()
 {
@@ -340,8 +342,14 @@ void boost_options_process_switches()
 
 					case BOOST_MAX_DUTY:
 
-						// Boost solenoid maximum duty cycle. Resolution 1.
-						boost_control_alter_max_duty(delta);
+						// Boost solenoid maximum duty cycle is scaled by 10. Resolution 0.1.
+						boost_control_alter_max_duty_scaled(delta);
+						break;
+
+					case BOOST_ZERO_POINT_DUTY:
+
+						// Boost solenoid zero point duty cycle is scaled by 10. Resolution 0.1.
+						boost_control_alter_zero_point_duty_scaled(delta);
 						break;
 
 					case DISPLAY_MAX_BRIGHTNESS:
@@ -487,6 +495,11 @@ void boost_options_poll()
 			case BOOST_MAX_DUTY:
 
 				display_boost_max_duty();
+				break;
+
+			case BOOST_ZERO_POINT_DUTY:
+
+				display_boost_zero_point_duty();
 				break;
 
 			case DISPLAY_MAX_BRIGHTNESS:
@@ -699,9 +712,9 @@ void display_boost_pid_deriv_const()
 
 void display_boost_max_duty()
 {
-	unsigned boost_max_duty = boost_control_get_max_duty();
+	unsigned boost_max_duty = boost_control_get_max_duty_scaled();
 
-	// Show with 0 decimal points.
+	// Show with 1 decimal point.
 	unsigned dispVal = boost_max_duty;
 
 	display -> encodeNumber(dispVal, 3, 3, disp_data);
@@ -709,6 +722,27 @@ void display_boost_max_duty()
 	if(!edit_mode || displayFlashOn)
 	{
 		disp_data[0] = display -> encodeAlpha('Q');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
+
+	display -> show(disp_data);
+}
+
+void display_boost_zero_point_duty()
+{
+	unsigned boost_zero_point_duty = boost_control_get_zero_point_duty_scaled();
+
+	// Show with 1 decimal point.
+	unsigned dispVal = boost_zero_point_duty;
+
+	display -> encodeNumber(dispVal, 3, 3, disp_data);
+
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('O');
 	}
 	else
 	{
@@ -727,7 +761,7 @@ void display_show_max_brightness()
 
 	if(!edit_mode || displayFlashOn)
 	{
-		disp_data[0] = display -> encodeAlpha('O');
+		disp_data[0] = display -> encodeAlpha('R');
 	}
 	else
 	{
@@ -746,7 +780,7 @@ void display_show_min_brightness()
 
 	if(!edit_mode || displayFlashOn)
 	{
-		disp_data[0] = display -> encodeAlpha('R');
+		disp_data[0] = display -> encodeAlpha('H');
 	}
 	else
 	{
@@ -765,6 +799,7 @@ void display_show_min_brightness()
 		uint32_t boost_pid_integ_const_scaled
 		uint32_t boost_pid_deriv_const_scaled
 		uint32_t boost_max_duty
+		uint32_t boost_zero_point_duty
 		uint8_t display_max_brightness
 		uint8_t display_max_brightness
 */
@@ -792,9 +827,10 @@ bool boost_options_commit()
 	writeBuffer32[3] = boost_control_get_pid_prop_const_scaled();
 	writeBuffer32[4] = boost_control_get_pid_integ_const_scaled();
 	writeBuffer32[5] = boost_control_get_pid_deriv_const_scaled();
-	writeBuffer32[6] = boost_control_get_max_duty();
-	writeBuffer[28] = display_max_brightness;
-	writeBuffer[29] = display_min_brightness;
+	writeBuffer32[6] = boost_control_get_max_duty_scaled();
+	writeBuffer32[7] = boost_control_get_zero_point_duty_scaled();
+	writeBuffer[32] = display_max_brightness;
+	writeBuffer[33] = display_min_brightness;
 
 	// Calculate byte wise checksum.
 	uint32_t checksum = 0;
@@ -855,9 +891,10 @@ bool boost_options_read()
 			boost_control_set_pid_prop_const_scaled(buffer32[3]);
 			boost_control_set_pid_integ_const_scaled(buffer32[4]);
 			boost_control_set_pid_deriv_const_scaled(buffer32[5]);
-			boost_control_set_max_duty(buffer32[6]);
-			display_max_brightness = buffer[28];
-			display_min_brightness = buffer[29];
+			boost_control_set_max_duty_scaled(buffer32[6]);
+			boost_control_set_zero_point_duty_scaled(buffer32[7]);
+			display_max_brightness = buffer[32];
+			display_min_brightness = buffer[33];
 		}
 		else
 		{

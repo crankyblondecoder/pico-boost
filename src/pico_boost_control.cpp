@@ -86,8 +86,14 @@ uint32_t boost_pid_integ_const_scaled = 1000;
 /** PID derivative constant Kd. Scaled by 1000. */
 uint32_t boost_pid_deriv_const_scaled = 500;
 
-/** Maximum duty cycle, in %. */
-uint32_t boost_max_duty = 95;
+/** Maximum duty cycle, in %. Scaled by 10. */
+uint32_t boost_max_duty = 950;
+
+/**
+ * Duty cycle that corresponds to PID error being 0, in %. Scaled by 10.
+ * This is essentially the duty cycle that, if set, would result in a steady state of the required boost.
+ */
+uint32_t boost_zero_point_duty = 200;
 
 /** Current duty cycle. Scaled by 1000. */
 uint32_t boost_current_duty_scaled = 0;
@@ -262,23 +268,46 @@ void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 	if(newVal > 0) boost_pid_deriv_const_scaled = newVal; else boost_pid_deriv_const_scaled = 0;
 }
 
-unsigned boost_control_get_max_duty()
+unsigned boost_control_get_max_duty_scaled()
 {
 	return boost_max_duty;
 }
 
-void boost_control_set_max_duty(unsigned maxDuty)
+void boost_control_set_max_duty_scaled(unsigned maxDuty)
 {
 	boost_max_duty = maxDuty;
+
+	if(boost_max_duty > 1000) boost_max_duty = 1000;
 }
 
-void boost_control_alter_max_duty(int maxDutyDelta)
+void boost_control_alter_max_duty_scaled(int maxDutyDelta)
 {
 	int newVal = (int)boost_max_duty + maxDutyDelta;
 
 	if(newVal > 0) boost_max_duty = newVal; else boost_max_duty = 0;
 
-	if(boost_max_duty > 100) boost_max_duty = 100;
+	if(boost_max_duty > 1000) boost_max_duty = 1000;
+}
+
+unsigned boost_control_get_zero_point_duty_scaled()
+{
+	return boost_zero_point_duty;
+}
+
+void boost_control_set_zero_point_duty_scaled(unsigned zeroPointDuty)
+{
+	boost_zero_point_duty = zeroPointDuty;
+
+	if(boost_zero_point_duty > 1000) boost_zero_point_duty = 1000;
+}
+
+void boost_control_alter_zero_point_duty_scaled(int dutyDelta)
+{
+	int newVal = (int)boost_zero_point_duty + dutyDelta;
+
+	if(newVal > 0) boost_zero_point_duty = newVal; else boost_zero_point_duty = 0;
+
+	if(boost_zero_point_duty > 1000) boost_zero_point_duty = 1000;
 }
 
 unsigned boost_control_get_current_duty_scaled()
