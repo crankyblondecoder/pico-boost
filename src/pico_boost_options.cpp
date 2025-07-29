@@ -7,6 +7,7 @@
 
 #include "Eeprom_24CS256.hpp"
 
+#include "gpioAlloc.hpp"
 #include "pico_boost_control.hpp"
 #include "pico_boost_options.hpp"
 
@@ -14,15 +15,6 @@ extern bool debug;
 
 /** Amount of time that both buttons have to be pressed to invoke a test pass. */
 #define TEST_START_TIMEOUT 5000
-
-/** Up and select button. */
-#define UP_SELECT_BUTTON_GPIO 14
-
-/** Down button */
-#define DOWN_BUTTON_GPIO 15
-
-/** Min brightness */
-#define MIN_BRIGHTNESS_GPIO 22
 
 /** Amount of time of inactivity, in milliseconds, before the current mode ends and the system returns to default. */
 #define MODE_COMPLETE_TIMEOUT 5000
@@ -387,7 +379,7 @@ void boost_options_init()
 	boost_options_read();
 
 	// Create 4 digit display instance.
-	display = new TM1637Display(16, 17);
+	display = new TM1637Display(DISPLAY_CLOCK_GPIO, DISPLAY_DATA_GPIO);
 
 	// Initial display data.
 	disp_data[3] = display -> encodeDigit(0);

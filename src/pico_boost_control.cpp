@@ -1,11 +1,10 @@
 #include "pico/time.h"
 
 #include "BoschMap_0261230119.hpp"
-#include "PicoAdcReader.hpp"
-
-#include "PicoPwm.hpp"
-
+#include "gpioAlloc.hpp"
 #include "pico_boost_control.hpp"
+#include "PicoAdcReader.hpp"
+#include "PicoPwm.hpp"
 
 /** Standard atmospheric pressure in Pascals. */
 #define STD_ATM_PRESSURE 101325
@@ -15,9 +14,6 @@
 
 /** Frequency of control solenoid. */
 #define CONTROL_SOLENOID_FREQ 30
-
-/** GPIO That channel A of the PWM slice used to control the solenoid. */
-#define CONTROL_SOLENOID_CHAN_A_GPIO 20 // Slice 2
 
 /** Gate state to use when disabling PWM. */
 #define CONTROL_SOLENOID_DISABLE_GATE_STATE false

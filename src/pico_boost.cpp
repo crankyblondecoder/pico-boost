@@ -7,17 +7,12 @@
 #include "pico/multicore.h"
 #include "pico/time.h"
 
+#include "gpioAlloc.hpp"
 #include "pico_boost_control.hpp"
 #include "pico_boost_options.hpp"
 
 /** The ADC channel used to get VSYS voltage. */
 #define VSYS_REF_CHANNEL 3
-
-/** The GPIO pin used for i2c bus 0 SDA (data) line. */
-#define I2C_BUS0_SDA_GPIO 12
-
-/** The GPIO pin used for i2c bus 0 SCL (clock) line. */
-#define I2C_BUS0_SCL_GPIO 13
 
 bool debugMsgActive = true;
 
