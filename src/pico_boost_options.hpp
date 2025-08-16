@@ -22,8 +22,11 @@ enum SelectOption
 	 */
 	CURRENT_DUTY,
 
-	/** Maximum boost, in kPa. */
-	BOOST_MAX_KPA,
+	/** Maximum boost, setting 1 (default), in kPa. */
+	BOOST_MAX_KPA_1,
+
+	/** Maximum boost, setting 2 (switched), in kPa. */
+	BOOST_MAX_KPA_2,
 
 	/** Boost value, in kPa, below which the wastegate solenoid is de-energised. */
 	BOOST_DE_ENERGISE_KPA,

@@ -29,6 +29,9 @@ BoschMap_0261230119* boost_map_sensor;
 
 PicoAdcReader* vsys_ref_adc;
 
+/** The current boost parameters. */
+boost_control_parameters boost_cur_params;
+
 /**
  * The current boost MAP sensor reading, scaled by 1000 so a float isn't required and 3 decimal places are used.
  * It is done this way because read/write on 32bit numbers are atomic on the RP2040.
@@ -36,27 +39,11 @@ PicoAdcReader* vsys_ref_adc;
  */
 uint32_t boost_map_kpa_scaled = 0;
 
-/** The maximum boost, in Kpa and relative to standard atmosphere. Scaled by 1000. */
-uint32_t boost_max_kpa_scaled = 100000;
-
-/**
- * The pressure, in Kpa and relative to standard atmosphere, below which the boost controller is de-energised. Scaled by 1000.
- */
-uint32_t boost_de_energise_kpa_scaled = 50000;
-
 /**
  * The pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is controlled by
  * the PID algorithm. Scaled by 1000.
  */
 uint32_t boost_pid_active_kpa_scaled = 75000;
-
-/**
- * The baseline solenoid duty cycle. This is the value that corresponds to a PID error of 0.
- * If this value is too small, it will cause the boost to undershoot the target. If it is too large, it will overshoot.
- * It is probably also dependent on the turbine inlet temperature which changes the characteristics of the waste gate in
- * terms of how much it opening affects the turbine power output.
- */
-uint32_t boost_pid_baseline_duty_scaled = 50000;
 
 /** Whether the solenoid is currently energised. ie PWM is active. */
 bool boost_energised = false;
@@ -71,23 +58,9 @@ float boost_pid_prev_error = 0;
 float boost_pid_integ = 0;
 
 /**
- * PID proportional constant Kp. Scaled by 1000.
- * This initial value should cause an above max duty when the PID algorithm initially kicks in.
- */
-uint32_t boost_pid_prop_const_scaled = 6000;
-
-/** PID integration constant Ki. Scaled by 1000. */
-uint32_t boost_pid_integ_const_scaled = 1000;
-
-/** PID derivative constant Kd. Scaled by 1000. */
-uint32_t boost_pid_deriv_const_scaled = 500;
-
-/** Maximum duty cycle, in %. Scaled by 10. */
-uint32_t boost_max_duty = 950;
-
-/**
  * Duty cycle that corresponds to PID error being 0, in %. Scaled by 10.
  * This is essentially the duty cycle that, if set, would result in a steady state of the required boost.
+ * If this value is too small, it will cause the boost to undershoot the target. If it is too large, it will overshoot.
  */
 uint32_t boost_zero_point_duty = 200;
 
@@ -117,6 +90,57 @@ extern bool debug;
 
 /** Process the control solenoid parameters and energise it accordingly. */
 void process_control_solenoid();
+
+void boost_control_parameters_get(boost_control_parameters* params)
+{
+	params -> max_kpa_scaled = boost_max_kpa_scaled;
+
+	params -> de_energise_kpa_scaled = boost_de_energise_kpa_scaled;
+
+	params -> pid_prop_const_scaled = boost_pid_prop_const_scaled;
+
+	params -> pid_integ_const_scaled = boost_pid_integ_const_scaled;
+
+	params -> pid_deriv_const_scaled = boost_pid_deriv_const_scaled;
+
+	params -> max_duty = boost_max_duty;
+
+	params -> zero_point_duty = boost_zero_point_duty;
+}
+
+void boost_control_parameters_set(boost_control_parameters* params)
+{
+	boost_max_kpa_scaled = params -> max_kpa_scaled;
+
+	boost_de_energise_kpa_scaled = params -> de_energise_kpa_scaled;
+
+	boost_pid_prop_const_scaled = params -> pid_prop_const_scaled;
+
+	boost_pid_integ_const_scaled = params -> pid_integ_const_scaled;
+
+	boost_pid_deriv_const_scaled = params -> pid_deriv_const_scaled;
+
+	boost_max_duty = params -> max_duty;
+
+	boost_zero_point_duty = params -> zero_point_duty;
+}
+
+void boost_control_parameters_populate_default(boost_control_parameters* params)
+{
+	params -> max_kpa_scaled = boost_max_kpa_scaled;
+
+	params -> de_energise_kpa_scaled = boost_de_energise_kpa_scaled;
+
+	params -> pid_prop_const_scaled = boost_pid_prop_const_scaled;
+
+	params -> pid_integ_const_scaled = boost_pid_integ_const_scaled;
+
+	params -> pid_deriv_const_scaled = boost_pid_deriv_const_scaled;
+
+	params -> max_duty = boost_max_duty;
+
+	params -> zero_point_duty = boost_zero_point_duty;
+}
 
 void boost_control_init()
 {

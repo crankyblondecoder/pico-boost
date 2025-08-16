@@ -3,6 +3,51 @@
 
 // Boost control module.
 
+/**
+ * All boost control parameters in one place.
+ */
+struct boost_control_parameters {
+
+	/** Maximum kPa. Scaled by 1000. */
+	uint32_t max_kpa_scaled;
+
+	/** Boost pressure below which the solenoid is de-energised. Scaled by 1000. */
+	uint32_t de_energise_kpa_scaled;
+
+	/** PID proportional constant. Scaled by 1000. */
+	uint32_t pid_prop_const_scaled;
+
+	/** PID integration constant. Scaled by 1000. */
+	uint32_t pid_integ_const_scaled;
+
+	/** PID derivative constant. Scaled by 1000. */
+	uint32_t pid_deriv_const_scaled;
+
+	/** Maximum duty cycle the solenoid can be set at. Scaled by 10. */
+	uint32_t max_duty;
+
+	/** zero point duty cycle of the solenoid. Scaled by 10. */
+	uint32_t zero_point_duty;
+};
+
+/**
+ * Get all boost control parameters.
+ * @param params Populate this with current parameters.
+ */
+void boost_control_parameters_get(boost_control_parameters* params);
+
+/**
+ * Set all boost control parameters.
+ * @param params Parameter data.
+ */
+void boost_control_parameters_set(boost_control_parameters* params);
+
+/**
+ * Set boost control parameters to defaults.
+ * @param params Parameter data to set to defaults.
+ */
+void boost_control_parameters_populate_default(boost_control_parameters* params);
+
 /** Initialise boost control module. */
 void boost_control_init();
 

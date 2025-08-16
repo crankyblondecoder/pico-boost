@@ -278,6 +278,11 @@ uint8_t TM1637Display::encodeAlpha(char character)
 			retVal = 0x50;
 			break;
 //*
+		case 't':
+		case 'T':
+			retVal = 0b01111000;
+			break;
+//*
 		case 'u':
 		case 'U':
 			retVal = 0x3E;
