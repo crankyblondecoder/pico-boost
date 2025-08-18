@@ -213,6 +213,7 @@ uint8_t TM1637Display::encodeAlpha(char character)
 
 	switch(character)
 	{
+//*
 		case 'a':
 		case 'A':
 			retVal = 0x77;

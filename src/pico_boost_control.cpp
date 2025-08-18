@@ -39,12 +39,6 @@ boost_control_parameters boost_cur_params;
  */
 uint32_t boost_map_kpa_scaled = 0;
 
-/**
- * The pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is controlled by
- * the PID algorithm. Scaled by 1000.
- */
-uint32_t boost_pid_active_kpa_scaled = 75000;
-
 /** Whether the solenoid is currently energised. ie PWM is active. */
 bool boost_energised = false;
 
@@ -56,13 +50,6 @@ float boost_pid_prev_error = 0;
 
 /** Current integral value for the PID algorithm. */
 float boost_pid_integ = 0;
-
-/**
- * Duty cycle that corresponds to PID error being 0, in %. Scaled by 10.
- * This is essentially the duty cycle that, if set, would result in a steady state of the required boost.
- * If this value is too small, it will cause the boost to undershoot the target. If it is too large, it will overshoot.
- */
-uint32_t boost_zero_point_duty = 200;
 
 /** Current duty cycle. Scaled by 1000. */
 uint32_t boost_current_duty_scaled = 0;
@@ -93,53 +80,57 @@ void process_control_solenoid();
 
 void boost_control_parameters_get(boost_control_parameters* params)
 {
-	params -> max_kpa_scaled = boost_max_kpa_scaled;
+	params -> max_kpa_scaled = boost_cur_params.max_kpa_scaled;
 
-	params -> de_energise_kpa_scaled = boost_de_energise_kpa_scaled;
+	params -> de_energise_kpa_scaled = boost_cur_params.de_energise_kpa_scaled;
 
-	params -> pid_prop_const_scaled = boost_pid_prop_const_scaled;
+	params -> pid_prop_const_scaled = boost_cur_params.pid_prop_const_scaled;
 
-	params -> pid_integ_const_scaled = boost_pid_integ_const_scaled;
+	params -> pid_integ_const_scaled = boost_cur_params.pid_integ_const_scaled;
 
-	params -> pid_deriv_const_scaled = boost_pid_deriv_const_scaled;
+	params -> pid_deriv_const_scaled = boost_cur_params.pid_deriv_const_scaled;
 
-	params -> max_duty = boost_max_duty;
+	params -> max_duty = boost_cur_params.max_duty;
 
-	params -> zero_point_duty = boost_zero_point_duty;
+	params -> zero_point_duty = boost_cur_params.zero_point_duty;
 }
 
 void boost_control_parameters_set(boost_control_parameters* params)
 {
-	boost_max_kpa_scaled = params -> max_kpa_scaled;
+	boost_cur_params.max_kpa_scaled = params -> max_kpa_scaled;
 
-	boost_de_energise_kpa_scaled = params -> de_energise_kpa_scaled;
+	boost_cur_params.de_energise_kpa_scaled = params -> de_energise_kpa_scaled;
 
-	boost_pid_prop_const_scaled = params -> pid_prop_const_scaled;
+	boost_cur_params.pid_prop_const_scaled = params -> pid_prop_const_scaled;
 
-	boost_pid_integ_const_scaled = params -> pid_integ_const_scaled;
+	boost_cur_params.pid_integ_const_scaled = params -> pid_integ_const_scaled;
 
-	boost_pid_deriv_const_scaled = params -> pid_deriv_const_scaled;
+	boost_cur_params.pid_deriv_const_scaled = params -> pid_deriv_const_scaled;
 
-	boost_max_duty = params -> max_duty;
+	boost_cur_params.max_duty = params -> max_duty;
 
-	boost_zero_point_duty = params -> zero_point_duty;
+	boost_cur_params.zero_point_duty = params -> zero_point_duty;
 }
 
 void boost_control_parameters_populate_default(boost_control_parameters* params)
 {
-	params -> max_kpa_scaled = boost_max_kpa_scaled;
+	// These are just abitrary and don't have any significance other than that they might be reasonable for 15 psi of boost.
 
-	params -> de_energise_kpa_scaled = boost_de_energise_kpa_scaled;
+	params -> max_kpa_scaled = 100000;
 
-	params -> pid_prop_const_scaled = boost_pid_prop_const_scaled;
+	params -> de_energise_kpa_scaled = 50000;
 
-	params -> pid_integ_const_scaled = boost_pid_integ_const_scaled;
+	params -> pid_active_kpa_scaled = 75000;
 
-	params -> pid_deriv_const_scaled = boost_pid_deriv_const_scaled;
+	params -> pid_prop_const_scaled = 6000;
 
-	params -> max_duty = boost_max_duty;
+	params -> pid_integ_const_scaled = 1000;
 
-	params -> zero_point_duty = boost_zero_point_duty;
+	params -> pid_deriv_const_scaled = 500;
+
+	params -> max_duty = 950;
+
+	params -> zero_point_duty = 200;
 }
 
 void boost_control_init()
@@ -154,6 +145,8 @@ void boost_control_init()
 	next_boost_latch_time = get_absolute_time();
 	next_boost_read_time = next_boost_latch_time;
 	last_solenoid_proc_time = next_boost_latch_time;
+
+	boost_control_parameters_populate_default(&boost_cur_params);
 }
 
 void boost_control_poll()
@@ -177,7 +170,7 @@ void boost_control_poll()
 
 		double boost_atm_scaled = (double)boost_map_kpa_scaled - STD_ATM_PRESSURE;
 
-		energised = boost_atm_scaled >= boost_de_energise_kpa_scaled;
+		energised = boost_atm_scaled >= boost_cur_params.de_energise_kpa_scaled;
 
 		process_control_solenoid();
 	}
@@ -190,7 +183,7 @@ bool boost_control_is_energised()
 
 bool boost_control_max_boost_reached()
 {
-	return boost_control_get_kpa_scaled() >= (int)boost_max_kpa_scaled;
+	return boost_control_get_kpa_scaled() >= (int)boost_cur_params.max_kpa_scaled;
 }
 
 int boost_control_get_kpa_scaled()
@@ -205,129 +198,146 @@ int boost_control_get_psi_scaled()
 
 unsigned boost_control_get_max_kpa_scaled()
 {
-	return boost_max_kpa_scaled;
+	return boost_cur_params.max_kpa_scaled;
 }
 
 void boost_control_set_max_kpa_scaled(unsigned maxKpaScaled)
 {
-	boost_max_kpa_scaled = maxKpaScaled;
+	boost_cur_params.max_kpa_scaled = maxKpaScaled;
 }
 
 void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta)
 {
-	int newVal = (int)boost_max_kpa_scaled + maxBoostKpaScaledDelta;
+	int newVal = (int)boost_cur_params.max_kpa_scaled + maxBoostKpaScaledDelta;
 
-	if(newVal > 0) boost_max_kpa_scaled = newVal; else boost_max_kpa_scaled = 0;
+	if(newVal > 0) boost_cur_params.max_kpa_scaled = newVal; else boost_cur_params.max_kpa_scaled = 0;
 }
 
 unsigned boost_control_get_de_energise_kpa_scaled()
 {
-	return boost_de_energise_kpa_scaled;
+	return boost_cur_params.de_energise_kpa_scaled;
 }
 
 void boost_control_set_de_energise_kpa_scaled(unsigned kpaScaled)
 {
-	boost_de_energise_kpa_scaled = kpaScaled;
+	boost_cur_params.de_energise_kpa_scaled = kpaScaled;
 }
 
 void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
 {
-	int newVal = (int)boost_de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
+	int newVal = (int)boost_cur_params.de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
 
-	if(newVal > 0) boost_de_energise_kpa_scaled = newVal; else boost_de_energise_kpa_scaled = 0;
+	if(newVal > 0) boost_cur_params.de_energise_kpa_scaled = newVal; else boost_cur_params.de_energise_kpa_scaled = 0;
+}
+
+unsigned boost_control_get_pid_active_kpa_scaled()
+{
+	return boost_cur_params.pid_active_kpa_scaled;
+}
+
+void boost_control_set_pid_active_kpa_scaled(unsigned kpaScaled)
+{
+	boost_cur_params.pid_active_kpa_scaled = kpaScaled;
+}
+
+void boost_control_alter_pid_active_kpa_scaled(int delta)
+{
+	int newVal = (int)boost_cur_params.pid_active_kpa_scaled + delta;
+
+	if(newVal > 0) boost_cur_params.pid_active_kpa_scaled = newVal; else boost_cur_params.pid_active_kpa_scaled = 0;
 }
 
 unsigned boost_control_get_pid_prop_const_scaled()
 {
-	return boost_pid_prop_const_scaled;
+	return boost_cur_params.pid_prop_const_scaled;
 }
 
 void boost_control_set_pid_prop_const_scaled(unsigned pidPropConstScaled)
 {
-	boost_pid_prop_const_scaled = pidPropConstScaled;
+	boost_cur_params.pid_prop_const_scaled = pidPropConstScaled;
 }
 
 void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 {
-	int newVal = (int)boost_pid_prop_const_scaled + pidPropConstScaledDelta;
+	int newVal = (int)boost_cur_params.pid_prop_const_scaled + pidPropConstScaledDelta;
 
-	if(newVal > 0) boost_pid_prop_const_scaled = newVal; else boost_pid_prop_const_scaled = 0;
+	if(newVal > 0) boost_cur_params.pid_prop_const_scaled = newVal; else boost_cur_params.pid_prop_const_scaled = 0;
 }
 
 unsigned boost_control_get_pid_integ_const_scaled()
 {
-	return boost_pid_integ_const_scaled;
+	return boost_cur_params.pid_integ_const_scaled;
 }
 
 void boost_control_set_pid_integ_const_scaled(unsigned pidIntegConstScaled)
 {
-	boost_pid_integ_const_scaled = pidIntegConstScaled;
+	boost_cur_params.pid_integ_const_scaled = pidIntegConstScaled;
 }
 
 void boost_control_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
 {
-	int newVal = (int)boost_pid_integ_const_scaled + pidIntegConstScaledDelta;
+	int newVal = (int)boost_cur_params.pid_integ_const_scaled + pidIntegConstScaledDelta;
 
-	if(newVal > 0) boost_pid_integ_const_scaled = newVal; else boost_pid_integ_const_scaled = 0;
+	if(newVal > 0) boost_cur_params.pid_integ_const_scaled = newVal; else boost_cur_params.pid_integ_const_scaled = 0;
 }
 
 unsigned boost_control_get_pid_deriv_const_scaled()
 {
-	return boost_pid_deriv_const_scaled;
+	return boost_cur_params.pid_deriv_const_scaled;
 }
 
 void boost_control_set_pid_deriv_const_scaled(unsigned pidDerivConstScaled)
 {
-	boost_pid_deriv_const_scaled = pidDerivConstScaled;
+	boost_cur_params.pid_deriv_const_scaled = pidDerivConstScaled;
 }
 
 void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 {
-	int newVal = (int)boost_pid_deriv_const_scaled + pidDerivConstScaledDelta;
+	int newVal = (int)boost_cur_params.pid_deriv_const_scaled + pidDerivConstScaledDelta;
 
-	if(newVal > 0) boost_pid_deriv_const_scaled = newVal; else boost_pid_deriv_const_scaled = 0;
+	if(newVal > 0) boost_cur_params.pid_deriv_const_scaled = newVal; else boost_cur_params.pid_deriv_const_scaled = 0;
 }
 
 unsigned boost_control_get_max_duty_scaled()
 {
-	return boost_max_duty;
+	return boost_cur_params.max_duty;
 }
 
 void boost_control_set_max_duty_scaled(unsigned maxDuty)
 {
-	boost_max_duty = maxDuty;
+	boost_cur_params.max_duty = maxDuty;
 
-	if(boost_max_duty > 1000) boost_max_duty = 1000;
+	if(boost_cur_params.max_duty > 1000) boost_cur_params.max_duty = 1000;
 }
 
 void boost_control_alter_max_duty_scaled(int maxDutyDelta)
 {
-	int newVal = (int)boost_max_duty + maxDutyDelta;
+	int newVal = (int)boost_cur_params.max_duty + maxDutyDelta;
 
-	if(newVal > 0) boost_max_duty = newVal; else boost_max_duty = 0;
+	if(newVal > 0) boost_cur_params.max_duty = newVal; else boost_cur_params.max_duty = 0;
 
-	if(boost_max_duty > 1000) boost_max_duty = 1000;
+	if(boost_cur_params.max_duty > 1000) boost_cur_params.max_duty = 1000;
 }
 
 unsigned boost_control_get_zero_point_duty_scaled()
 {
-	return boost_zero_point_duty;
+	return boost_cur_params.zero_point_duty;
 }
 
 void boost_control_set_zero_point_duty_scaled(unsigned zeroPointDuty)
 {
-	boost_zero_point_duty = zeroPointDuty;
+	boost_cur_params.zero_point_duty = zeroPointDuty;
 
-	if(boost_zero_point_duty > 1000) boost_zero_point_duty = 1000;
+	if(boost_cur_params.zero_point_duty > 1000) boost_cur_params.zero_point_duty = 1000;
 }
 
 void boost_control_alter_zero_point_duty_scaled(int dutyDelta)
 {
-	int newVal = (int)boost_zero_point_duty + dutyDelta;
+	int newVal = (int)boost_cur_params.zero_point_duty + dutyDelta;
 
-	if(newVal > 0) boost_zero_point_duty = newVal; else boost_zero_point_duty = 0;
+	if(newVal > 0) boost_cur_params.zero_point_duty = newVal; else boost_cur_params.zero_point_duty = 0;
 
-	if(boost_zero_point_duty > 1000) boost_zero_point_duty = 1000;
+	if(boost_cur_params.zero_point_duty > 1000) boost_cur_params.zero_point_duty = 1000;
 }
 
 unsigned boost_control_get_current_duty_scaled()
@@ -360,12 +370,12 @@ void process_control_solenoid()
 		uint32_t curBoostScaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
 
 		// Apply hysterisis to enable/disable about de-energise point.
-		if(boost_energised && curBoostScaled < (boost_de_energise_kpa_scaled - DE_ENERGISE_HYSTERESIS))
+		if(boost_energised && curBoostScaled < (boost_cur_params.de_energise_kpa_scaled - DE_ENERGISE_HYSTERESIS))
 		{
 			boost_energised = false;
 			disable_solenoid();
 		}
-		else if(!boost_energised && curBoostScaled > boost_de_energise_kpa_scaled)
+		else if(!boost_energised && curBoostScaled > boost_cur_params.de_energise_kpa_scaled)
 		{
 			boost_energised = true;
 			enable_solenoid();
@@ -373,10 +383,10 @@ void process_control_solenoid()
 
 		if(boost_energised)
 		{
-			if(curBoostScaled < boost_pid_active_kpa_scaled)
+			if(curBoostScaled < boost_cur_params.pid_active_kpa_scaled)
 			{
 				// Just pin at max duty.
-				set_solenoid_duty(boost_max_duty);
+				set_solenoid_duty(boost_cur_params.max_duty);
 
 				boost_pid_active = false;
 			}

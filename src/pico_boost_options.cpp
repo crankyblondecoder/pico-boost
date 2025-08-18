@@ -99,8 +99,8 @@ EepromPage eepromPages[1] = {{OPTIONS_EEPROM_PAGE_SIZE, 64}};
 /** Boost presets. */
 boost_control_parameters boost_presets[5];
 
-/** Index of the current maximum boost preset being used. */
-int cur_max_boost_preset_index = 0;
+/** Index of the current boost preset being used. */
+int cur_boost_preset_index = 0;
 
 void __runTests();
 
@@ -129,14 +129,20 @@ bool boost_options_commit();
  */
 bool boost_options_read();
 
+/**
+ * Alter the current preset index by the given delta.
+ */
+void alter_cur_preset_index(int delta);
+
 // Display character mapping
 // -------------------------
 // E: Default display energised.
 // L: Default display max boost reached.
 // C: Current solenoid control valve duty cycle.
-// B: BOOST_MAX_KPA_1
-// T: BOOST_MAX_KPA_2
+// T: CURRENT_PRESET_INDEX
+// B: BOOST_MAX_KPA
 // U: BOOST_DE_ENERGISE_KPA
+// A: BOOST_PID_ACTIVE_KPA
 // P: BOOST_PID_PROP_CONST
 // J: BOOST_PID_INTEG_CONST
 // D: BOOST_PID_DERIV_CONST
@@ -309,22 +315,27 @@ void boost_options_process_switches()
 			{
 				switch(cur_selected_option)
 				{
-					case BOOST_MAX_KPA_1:
+					case CURRENT_PRESET_INDEX:
 
-						// Max kPa is scaled by 1000. Resolution 1.
-						alter_max_kpa_scaled(0, delta * 1000);
+						alter_cur_preset_index(delta);
 						break;
 
-					case BOOST_MAX_KPA_2:
+					case BOOST_MAX_KPA:
 
 						// Max kPa is scaled by 1000. Resolution 1.
-						alter_max_kpa_scaled(1, delta * 1000);
+						boost_control_alter_max_kpa_scaled(delta * 1000);
 						break;
 
 					case BOOST_DE_ENERGISE_KPA:
 
 						// De-energise is scaled by 1000. Resolution 1.
 						boost_control_alter_de_energise_kpa_scaled(delta * 1000);
+						break;
+
+					case BOOST_PID_ACTIVE_KPA:
+
+						// TODO ...
+						blah;
 						break;
 
 					case BOOST_PID_PROP_CONST:
@@ -389,11 +400,11 @@ void boost_options_init()
 	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, eepromPages, 1);
 
 	// Initialise boost presets to defaults.
-	boost_presets[0] = 100000;
-	boost_presets[1] = 100000;
-	boost_presets[2] = 100000;
-	boost_presets[3] = 100000;
-	boost_presets[4] = 100000;
+	boost_control_parameters_populate_default(boost_presets);
+	boost_control_parameters_populate_default(boost_presets + 1);
+	boost_control_parameters_populate_default(boost_presets + 2);
+	boost_control_parameters_populate_default(boost_presets + 3);
+	boost_control_parameters_populate_default(boost_presets + 4);
 
 	// Read initial options.
 	boost_options_read();
@@ -479,7 +490,12 @@ void boost_options_poll()
 				display_current_duty();
 				break;
 
-			case BOOST_MAX_KPA_1:
+			case CURRENT_PRESET_INDEX:
+
+				display_current_preset_index();
+				break;
+
+			case BOOST_MAX_KPA:
 
 				display_max_boost();
 				break;
@@ -487,6 +503,11 @@ void boost_options_poll()
 			case BOOST_DE_ENERGISE_KPA:
 
 				display_boost_de_energise();
+				break;
+
+			case BOOST_PID_ACTIVE_KPA:
+
+				display_boost_pid_active();
 				break;
 
 			case BOOST_PID_PROP_CONST:
@@ -615,6 +636,16 @@ void display_current_duty()
 	display -> show(disp_data);
 }
 
+void display_current_preset_index()
+{
+	// Display just 1 digit.
+	display -> encodeNumber(cur_boost_preset_index, 3, 3, disp_data);
+
+	disp_data[0] = display -> encodeAlpha('T');
+
+	display -> show(disp_data);
+}
+
 void display_max_boost()
 {
 	unsigned boost_max_kpa_scaled = boost_control_get_max_kpa_scaled();
@@ -650,6 +681,28 @@ void display_boost_de_energise()
 	if(!edit_mode || displayFlashOn)
 	{
 		disp_data[0] = display -> encodeAlpha('U');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
+
+	display -> show(disp_data);
+}
+
+void display_boost_pid_active()
+{
+	unsigned boost_pid_active_kpa_scaled = boost_control_get_pid_active_kpa_scaled();
+
+	// Show with 0 decimal points.
+	unsigned dispKpa = boost_pid_active_kpa_scaled / 1000;
+
+	// Display just 3 digits of kPa value.
+	display -> encodeNumber(dispKpa, 3, 3, disp_data);
+
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('A');
 	}
 	else
 	{
@@ -808,6 +861,7 @@ void display_show_min_brightness()
 		// Copy for each preset 1 to 5.
 		uint32_t boost_max_kpa_scaled
 		uint32_t boost_de_energise_kpa_scaled
+		uint32_t boost_pid_active_kpa_scaled
 		uint32_t boost_pid_prop_const_scaled
 		uint32_t boost_pid_integ_const_scaled
 		uint32_t boost_pid_deriv_const_scaled
@@ -839,23 +893,26 @@ bool boost_options_commit()
 	// Remember that the first entry in the buffer is the checksum.
 	int index32 = 1;
 
-	writeBuffer32[index32++] = max_boost_presets[0];
-	writeBuffer32[index32++] = max_boost_presets[1];
-	writeBuffer32[index32++] = max_boost_presets[2];
-	writeBuffer32[index32++] = max_boost_presets[3];
-	writeBuffer32[index32++] = max_boost_presets[4];
-	writeBuffer32[index32++] = boost_control_get_de_energise_kpa_scaled();
-	writeBuffer32[index32++] = boost_control_get_pid_prop_const_scaled();
-	writeBuffer32[index32++] = boost_control_get_pid_integ_const_scaled();
-	writeBuffer32[index32++] = boost_control_get_pid_deriv_const_scaled();
-	writeBuffer32[index32++] = boost_control_get_max_duty_scaled();
-	writeBuffer32[index32++] = boost_control_get_zero_point_duty_scaled();
+	// Five presets.
+	for(int index = 0; index < 5; index++)
+	{
+		boost_control_parameters*  cur_boost_presets = boost_presets + index;
+
+		writeBuffer32[index32++] = cur_boost_presets -> max_kpa_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> de_energise_kpa_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> pid_active_kpa_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> pid_prop_const_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> pid_integ_const_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> pid_deriv_const_scaled;
+		writeBuffer32[index32++] = cur_boost_presets -> max_duty;
+		writeBuffer32[index32++] = cur_boost_presets -> zero_point_duty;
+	}
 
 	int index8 = (index32 - 1) * 4;
 
 	writeBuffer[index8++] = display_max_brightness;
 	writeBuffer[index8++] = display_min_brightness;
-	writeBuffer[index8++] = cur_max_boost_preset_index;
+	writeBuffer[index8++] = cur_boost_preset_index;
 
 	// Calculate byte wise checksum.
 	uint32_t checksum = 0;
@@ -891,50 +948,52 @@ bool boost_options_commit()
 
 bool boost_options_read()
 {
-	uint8_t buffer[OPTIONS_EEPROM_PAGE_SIZE];
+	uint8_t readBuffer[OPTIONS_EEPROM_PAGE_SIZE];
 
-	bool okay = eeprom_24CS256 -> readPage(0, buffer);
+	bool okay = eeprom_24CS256 -> readPage(0, readBuffer);
 
 	if(okay)
 	{
-		uint32_t* buffer32 = (uint32_t*) buffer;
+		uint32_t* readBuffer32 = (uint32_t*) readBuffer;
 
 		// Calculate byte wise checksum and compare.
 		uint32_t checksum = 0;
 
 		for(int index = 4; index < OPTIONS_EEPROM_PAGE_SIZE; index++)
 		{
-			checksum += buffer[index];
+			checksum += readBuffer[index];
 		}
 
-		okay = (buffer32[0] == checksum);
+		okay = (readBuffer32[0] == checksum);
 
 		if(okay)
 		{
 			// Remember that the first entry in the buffer is the checksum.
 			int index32 = 1;
 
-			max_boost_presets[0] = buffer32[index32++];
-			max_boost_presets[1] = buffer32[index32++];
-			max_boost_presets[2] = buffer32[index32++];
-			max_boost_presets[3] = buffer32[index32++];
-			max_boost_presets[4] = buffer32[index32++];
+			// Five presets.
+			for(int index = 0; index < 5; index++)
+			{
+				boost_control_parameters*  cur_boost_presets = boost_presets + index;
 
-			boost_control_set_de_energise_kpa_scaled(buffer32[index32++]);
-			boost_control_set_pid_prop_const_scaled(buffer32[index32++]);
-			boost_control_set_pid_integ_const_scaled(buffer32[index32++]);
-			boost_control_set_pid_deriv_const_scaled(buffer32[index32++]);
-			boost_control_set_max_duty_scaled(buffer32[index32++]);
-			boost_control_set_zero_point_duty_scaled(buffer32[index32++]);
+				cur_boost_presets -> max_kpa_scaled = readBuffer32[index32++];
+				cur_boost_presets -> de_energise_kpa_scaled = readBuffer32[index32++];
+				cur_boost_presets -> pid_active_kpa_scaled = readBuffer32[index32++];
+				cur_boost_presets -> pid_prop_const_scaled = readBuffer32[index32++];
+				cur_boost_presets -> pid_integ_const_scaled = readBuffer32[index32++];
+				cur_boost_presets -> pid_deriv_const_scaled = readBuffer32[index32++];
+				cur_boost_presets -> max_duty = readBuffer32[index32++];
+				cur_boost_presets -> zero_point_duty = readBuffer32[index32++];
+			}
 
 			int index8 = (index32 - 1) * 4;
 
-			display_max_brightness = buffer[index8++];
-			display_min_brightness = buffer[index8++];
-			cur_max_boost_preset_index = buffer[index8++];
+			display_max_brightness = readBuffer[index8++];
+			display_min_brightness = readBuffer[index8++];
+			cur_boost_preset_index = readBuffer[index8++];
 
-			// Set the max kpa on control only after the preset index is read.
-			boost_control_set_max_kpa_scaled(max_boost_presets[cur_max_boost_preset_index]);
+			// Set the params on control only after the preset index is read.
+			boost_control_parameters_set(boost_presets + cur_boost_preset_index);
 		}
 		else
 		{
@@ -945,11 +1004,15 @@ bool boost_options_read()
 	return okay;
 }
 
-void alter_max_kpa_scaled(int presetIndex, int maxBoostKpaScaledDelta)
+void alter_cur_preset_index(int delta)
 {
-	int newVal = (int)boost_max_kpa_scaled + maxBoostKpaScaledDelta;
+	int newPresetIndex = cur_boost_preset_index + delta;
 
-	if(newVal > 0) boost_max_kpa_scaled = newVal; else boost_max_kpa_scaled = 0;
+	if(newPresetIndex < 0) newPresetIndex = 4;
+
+	if(newPresetIndex > 4) newPresetIndex = 0;
+
+	boost_control_parameters_set(boost_presets + cur_boost_preset_index);
 }
 
 void __testEeprom()
