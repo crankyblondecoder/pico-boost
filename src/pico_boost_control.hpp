@@ -15,8 +15,8 @@ struct boost_control_parameters {
 	uint32_t de_energise_kpa_scaled;
 
 	/**
- 	 * The pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is controlled by
- 	 * the PID algorithm. Scaled by 1000.
+ 	 * The boost pressure, in Kpa and relative to standard atmosphere, above which the boost controller duty cycle is
+	 * controlled by the PID algorithm. Scaled by 1000.
  	 */
 	uint32_t pid_active_kpa_scaled;
 

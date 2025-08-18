@@ -109,6 +109,7 @@ void display_current_boost_psi();
 void display_current_duty();
 void display_max_boost();
 void display_boost_de_energise();
+void display_boost_pid_active();
 void display_boost_pid_prop_const();
 void display_boost_pid_integ_const();
 void display_boost_pid_deriv_const();
@@ -116,6 +117,7 @@ void display_boost_max_duty();
 void display_boost_zero_point_duty();
 void display_show_max_brightness();
 void display_show_min_brightness();
+void display_current_preset_index();
 
 /**
  * Commit the current boost options to EEPROM.
@@ -334,8 +336,8 @@ void boost_options_process_switches()
 
 					case BOOST_PID_ACTIVE_KPA:
 
-						// TODO ...
-						blah;
+						// PID active is scaled by 1000. Resolution 1.
+						boost_control_alter_pid_active_kpa_scaled(delta * 1000);
 						break;
 
 					case BOOST_PID_PROP_CONST:
