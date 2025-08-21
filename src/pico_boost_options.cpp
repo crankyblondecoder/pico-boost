@@ -117,7 +117,9 @@ void display_boost_max_duty();
 void display_boost_zero_point_duty();
 void display_show_max_brightness();
 void display_show_min_brightness();
+void display_show_factory_reset();
 void display_current_preset_index();
+void invoke_factory_reset();
 
 /**
  * Commit the current boost options to EEPROM.
@@ -221,7 +223,7 @@ void boost_options_process_switches()
 			}
 			else if(downStateUnProc && !down_button -> getSwitchState())
 			{
-				// Change to the previou state on down button release.
+				// Change to the previous state on down button release.
 				cur_selected_option--;
 
 				if(cur_selected_option < 0) cur_selected_option = SELECT_OPTION_LAST - 1;
@@ -242,6 +244,9 @@ void boost_options_process_switches()
 
 			selectUpProced = true;
 			downProced = true;
+
+			// If in factory reset mode, explicit exit of edit mode triggers the reset.
+			if(cur_selected_option == FACTORY_RESET) invoke_factory_reset();
 
 			// Save options to EEPROM.
 			boost_options_commit();
@@ -394,6 +399,41 @@ void boost_options_process_switches()
 	if(downProced) last_proc_down_button_state_index = curDownStateIndex;
 }
 
+/**
+ * Setup boost parameters from the current preset.
+ */
+void boost_options_setup_from_cur_preset()
+{
+	boost_control_parameters_set(boost_presets + cur_boost_preset_index);
+}
+
+/**
+ * Set all variables to default values.
+ */
+void boost_options_set_defaults()
+{
+	// Initialise boost presets to defaults.
+	boost_control_parameters_populate_default(boost_presets);
+	boost_control_parameters_populate_default(boost_presets + 1);
+	boost_control_parameters_populate_default(boost_presets + 2);
+	boost_control_parameters_populate_default(boost_presets + 3);
+	boost_control_parameters_populate_default(boost_presets + 4);
+
+	cur_boost_preset_index = 0;
+
+	boost_options_setup_from_cur_preset();
+
+	display_max_brightness = 7;
+	display_min_brightness = 4;
+	display_use_min_brightness = false;
+
+	edit_mode = false;
+
+	cur_selected_option = default_select_option;
+
+	displayFlashOn = true;
+}
+
 void boost_options_init()
 {
 	// Create EEPROM instance and initialise it.
@@ -402,12 +442,7 @@ void boost_options_init()
 
 	eeprom_24CS256 = new Eeprom_24CS256(i2c0, 0, eepromPages, 1);
 
-	// Initialise boost presets to defaults.
-	boost_control_parameters_populate_default(boost_presets);
-	boost_control_parameters_populate_default(boost_presets + 1);
-	boost_control_parameters_populate_default(boost_presets + 2);
-	boost_control_parameters_populate_default(boost_presets + 3);
-	boost_control_parameters_populate_default(boost_presets + 4);
+	boost_options_set_defaults();
 
 	// Read initial options.
 	boost_options_read();
@@ -547,6 +582,11 @@ void boost_options_poll()
 
 				display_show_min_brightness();
 				break;
+
+			case FACTORY_RESET:
+
+				display_show_factory_reset();
+				break;
 		}
 	}
 }
@@ -644,7 +684,14 @@ void display_current_preset_index()
 	// Display just 1 digit.
 	display -> encodeNumber(cur_boost_preset_index, 3, 3, disp_data);
 
-	disp_data[0] = display -> encodeAlpha('T');
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('T');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
 
 	display -> show(disp_data);
 }
@@ -858,6 +905,24 @@ void display_show_min_brightness()
 	display -> show(disp_data);
 }
 
+void display_show_factory_reset()
+{
+	disp_data[1] = 0;
+	disp_data[2] = 0;
+	disp_data[3] = 0;
+
+	if(!edit_mode || displayFlashOn)
+	{
+		disp_data[0] = display -> encodeAlpha('Y');
+	}
+	else
+	{
+		disp_data[0] = 0;
+	}
+
+	display -> show(disp_data);
+}
+
 /*
 	Current Page entries:
 
@@ -996,7 +1061,7 @@ bool boost_options_read()
 			cur_boost_preset_index = readBuffer[index8++];
 
 			// Set the params on control only after the preset index is read.
-			boost_control_parameters_set(boost_presets + cur_boost_preset_index);
+			boost_options_setup_from_cur_preset();
 		}
 		else
 		{
@@ -1016,6 +1081,14 @@ void alter_cur_preset_index(int delta)
 	if(newPresetIndex > 4) newPresetIndex = 0;
 
 	boost_control_parameters_set(boost_presets + cur_boost_preset_index);
+}
+
+void invoke_factory_reset()
+{
+	boost_options_set_defaults();
+
+	// Save options to EEPROM.
+	boost_options_commit();
 }
 
 void __testEeprom()
