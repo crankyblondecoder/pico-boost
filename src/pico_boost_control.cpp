@@ -24,6 +24,9 @@
  */
 #define DE_ENERGISE_HYSTERESIS 5000
 
+/** Time in seconds over which the PID integral term is summed. */
+#define PID_INTEG_SUM_TIME 0.5
+
 /** Bosch map sensor to read current turbo pressure from. */
 BoschMap_0261230119* boost_map_sensor;
 
@@ -48,11 +51,11 @@ bool boost_pid_active = false;
 /** Previous error for the PID algorithm. */
 float boost_pid_prev_error = 0;
 
-/** Current integral value for the PID algorithm. */
+/** Current integral value for the PID algorithm. This is _not_ multiplied by the constant. */
 float boost_pid_integ = 0;
 
-/** Current duty cycle. Scaled by 1000. */
-uint32_t boost_current_duty_scaled = 0;
+/** The last time the PID algorithm was processed. */
+absolute_time_t boost_last_pid_proc_time;
 
 /** The next time the boost map sensor is latched (reads and stores the current value of the sensor) */
 absolute_time_t next_boost_latch_time;
@@ -342,7 +345,9 @@ void boost_control_alter_zero_point_duty_scaled(int dutyDelta)
 
 unsigned boost_control_get_current_duty_scaled()
 {
-	return boost_current_duty_scaled;
+	if(boost_energised) return pwmControl.getDutyA() * 10.0;
+
+	return 0;
 }
 
 /**
@@ -392,16 +397,48 @@ void process_control_solenoid()
 			}
 			else
 			{
+				absolute_time_t cur_proc_time = get_absolute_time();
+
 				if(!boost_pid_active)
 				{
-					// TODO ... Setup initial PID vars.
-					//blah;
+					// Setup initial PID vars.
+					boost_pid_prev_error = 0;
+					boost_pid_integ = 0;
+					boost_last_pid_proc_time = cur_proc_time;
 
 					boost_pid_active = true;
 				}
 
-				// TODO ... PID control
-				//blah;
+				float error = (curBoostScaled - boost_cur_params.max_kpa_scaled) / 1000.0;
+
+				float deltaTime = absolute_time_diff_us(boost_last_pid_proc_time, cur_proc_time) / 1000.0;
+
+				// Calc proportional and deriviative terms.
+				float controlVar = error * boost_cur_params.pid_prop_const_scaled + (error - boost_pid_prev_error) *
+					boost_cur_params.pid_deriv_const_scaled;
+
+				// Use an approximation to a time limited integration term.
+				// This removes a proportion of the average from the term and adds in the value associated with the current
+				// delta time.
+				boost_pid_integ -= deltaTime * boost_pid_integ / PID_INTEG_SUM_TIME;
+				boost_pid_integ += error * deltaTime;
+
+				controlVar += boost_pid_integ * boost_cur_params.pid_integ_const_scaled;
+
+				// Map control var to duty cycle and set duty cycle.
+				// Use one to one correspondence between control var and duty cycle with zero point adjustment so that
+				// a control var of zero should match the required boost output.
+
+				float duty = controlVar + boost_cur_params.zero_point_duty;
+
+				if(duty > boost_cur_params.max_duty) duty = boost_cur_params.max_duty;
+				if(duty < 0.0) duty = 0.0;
+
+				set_solenoid_duty(duty);
+
+				boost_last_pid_proc_time = cur_proc_time;
+
+				boost_pid_prev_error = error;
 			}
 		}
 		else

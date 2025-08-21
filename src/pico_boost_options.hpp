@@ -55,6 +55,9 @@ enum SelectOption
 	/** Minimum brightness of display. (ie "Headlights on")*/
 	DISPLAY_MIN_BRIGHTNESS,
 
+	/** Factory reset. Set all data back to original defaults. */
+	FACTORY_RESET,
+
 	/** Not an option, just used to indicate enum length. */
 	SELECT_OPTION_LAST
 };

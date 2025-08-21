@@ -211,7 +211,7 @@ void boost_control_set_zero_point_duty_scaled(unsigned zeroPointDuty);
 void boost_control_alter_zero_point_duty_scaled(int dutyDelta);
 
 /**
- * Get the current boost control solenoid duty cycle. Scaled by 1000.
+ * Get the current boost control solenoid duty cycle. Scaled by 10.
  */
 unsigned boost_control_get_current_duty_scaled();
 

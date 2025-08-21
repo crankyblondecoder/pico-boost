@@ -45,6 +45,16 @@ class PicoPwm
 		void setFreq(float freq);
 
 		/**
+		 * Get the current duty cycle for channel A.
+		 */
+		float getDutyA();
+
+		/**
+		 * Get the current duty cycle for channel B.
+		 */
+		float getDutyB();
+
+		/**
 		 * Set the duty cycle for one or both channels of the slice.
 		 * @param dutyA Percentage duty cycle for channel A. A negative value means "Don't set".
 		 * @param dutyB Percentage duty cycle for channel B. A negative value means "Don't set".
@@ -96,6 +106,12 @@ class PicoPwm
 
 		/** Whether phase correct is being used. 0 for false, 1 for true. */
 		uint8_t _phaseCorrect;
+
+		/** The current duty cycle for channel A. */
+		float _curDutyA;
+
+		/** The current duty cycle for channel B. */
+		float _curDutyB;
 };
 
 #endif

@@ -13,6 +13,9 @@ PicoPwm::~PicoPwm()
 PicoPwm::PicoPwm(int chanAGpio, int chanBGpio, float initFreq, float initDutyCycleA, float initDutyCycleB, bool phaseCorrect,
 	bool initDisableState) : _chanAGpio(chanAGpio), _chanBGpio(chanBGpio)
 {
+	_curDutyA = 0.0;
+	_curDutyB = 0.0;
+
 	if(chanAGpio > -1) gpio_set_function(chanAGpio, GPIO_FUNC_PWM);
     if(chanBGpio > -1) gpio_set_function(chanBGpio, GPIO_FUNC_PWM);
 
@@ -116,6 +119,16 @@ void PicoPwm::__setFreq(float freq)
 	pwm_set_clkdiv_int_frac4(_sliceNumber, divInt, divFrac);
 }
 
+float PicoPwm::getDutyA()
+{
+	return _curDutyA;
+}
+
+float PicoPwm::getDutyB()
+{
+	return _curDutyB;
+}
+
 void PicoPwm::setDuty(float dutyA, float dutyB)
 {
 	__setDuty(dutyA, dutyB);
@@ -127,8 +140,16 @@ void PicoPwm::__setDuty(float dutyA, float dutyB)
 	{
 		// Note: For channel level (CC) to be at 100% duty cycle it must be set to wrap + 1 (TOP +1)
 
-		if(dutyA >= 0) pwm_set_chan_level(_sliceNumber, PWM_CHAN_A, (_counterWrap + 1) * (dutyA / 100.0));
+		if(dutyA >= 0)
+		{
+			pwm_set_chan_level(_sliceNumber, PWM_CHAN_A, (_counterWrap + 1) * (dutyA / 100.0));
+			_curDutyA = dutyA;
+		}
 
-		if(dutyB >= 0) pwm_set_chan_level(_sliceNumber, PWM_CHAN_B, (_counterWrap + 1) * (dutyB / 100.0));
+		if(dutyB >= 0)
+		{
+			pwm_set_chan_level(_sliceNumber, PWM_CHAN_B, (_counterWrap + 1) * (dutyB / 100.0));
+			_curDutyB = dutyB;
+		}
 	}
 }
