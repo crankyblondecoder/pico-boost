@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Use the GDB "load" command to upload the executable. "monitor reset init" must be run afterwards though.
+
 echo "*** Note: gdb on second core must also be started. If either cores are halted, both will be."
 echo ""
 
