@@ -33,7 +33,7 @@ BoschMap_0261230119* boost_map_sensor;
 PicoAdcReader* vsys_ref_adc;
 
 /** The current boost parameters. */
-boost_control_parameters boost_cur_params;
+boost_control_parameters* boost_cur_params;
 
 /**
  * The current boost MAP sensor reading, scaled by 1000 so a float isn't required and 3 decimal places are used.
@@ -83,19 +83,19 @@ void process_control_solenoid();
 
 void boost_control_parameters_get(boost_control_parameters* params)
 {
-	params -> max_kpa_scaled = boost_cur_params.max_kpa_scaled;
+	params -> max_kpa_scaled = boost_cur_params -> max_kpa_scaled;
 
-	params -> de_energise_kpa_scaled = boost_cur_params.de_energise_kpa_scaled;
+	params -> de_energise_kpa_scaled = boost_cur_params -> de_energise_kpa_scaled;
 
-	params -> pid_prop_const_scaled = boost_cur_params.pid_prop_const_scaled;
+	params -> pid_prop_const_scaled = boost_cur_params -> pid_prop_const_scaled;
 
-	params -> pid_integ_const_scaled = boost_cur_params.pid_integ_const_scaled;
+	params -> pid_integ_const_scaled = boost_cur_params -> pid_integ_const_scaled;
 
-	params -> pid_deriv_const_scaled = boost_cur_params.pid_deriv_const_scaled;
+	params -> pid_deriv_const_scaled = boost_cur_params -> pid_deriv_const_scaled;
 
-	params -> max_duty = boost_cur_params.max_duty;
+	params -> max_duty = boost_cur_params -> max_duty;
 
-	params -> zero_point_duty = boost_cur_params.zero_point_duty;
+	params -> zero_point_duty = boost_cur_params -> zero_point_duty;
 }
 
 void boost_control_parameters_set(boost_control_parameters* params)
@@ -149,7 +149,8 @@ void boost_control_init()
 	next_boost_read_time = next_boost_latch_time;
 	last_solenoid_proc_time = next_boost_latch_time;
 
-	boost_control_parameters_populate_default(&boost_cur_params);
+	boost_cur_params = new boost_control_parameters;
+	boost_control_parameters_populate_default(boost_cur_params);
 }
 
 void boost_control_poll()
@@ -173,7 +174,7 @@ void boost_control_poll()
 
 		double boost_atm_scaled = (double)boost_map_kpa_scaled - STD_ATM_PRESSURE;
 
-		energised = boost_atm_scaled >= boost_cur_params.de_energise_kpa_scaled;
+		energised = boost_atm_scaled >= boost_cur_params -> de_energise_kpa_scaled;
 
 		process_control_solenoid();
 	}
@@ -186,7 +187,7 @@ bool boost_control_is_energised()
 
 bool boost_control_max_boost_reached()
 {
-	return boost_control_get_kpa_scaled() >= (int)boost_cur_params.max_kpa_scaled;
+	return boost_control_get_kpa_scaled() >= (int)boost_cur_params -> max_kpa_scaled;
 }
 
 int boost_control_get_kpa_scaled()
@@ -201,146 +202,146 @@ int boost_control_get_psi_scaled()
 
 unsigned boost_control_get_max_kpa_scaled()
 {
-	return boost_cur_params.max_kpa_scaled;
+	return boost_cur_params -> max_kpa_scaled;
 }
 
 void boost_control_set_max_kpa_scaled(unsigned maxKpaScaled)
 {
-	boost_cur_params.max_kpa_scaled = maxKpaScaled;
+	boost_cur_params -> max_kpa_scaled = maxKpaScaled;
 }
 
 void boost_control_alter_max_kpa_scaled(int maxBoostKpaScaledDelta)
 {
-	int newVal = (int)boost_cur_params.max_kpa_scaled + maxBoostKpaScaledDelta;
+	int newVal = (int)boost_cur_params -> max_kpa_scaled + maxBoostKpaScaledDelta;
 
-	if(newVal > 0) boost_cur_params.max_kpa_scaled = newVal; else boost_cur_params.max_kpa_scaled = 0;
+	if(newVal > 0) boost_cur_params -> max_kpa_scaled = newVal; else boost_cur_params -> max_kpa_scaled = 0;
 }
 
 unsigned boost_control_get_de_energise_kpa_scaled()
 {
-	return boost_cur_params.de_energise_kpa_scaled;
+	return boost_cur_params -> de_energise_kpa_scaled;
 }
 
 void boost_control_set_de_energise_kpa_scaled(unsigned kpaScaled)
 {
-	boost_cur_params.de_energise_kpa_scaled = kpaScaled;
+	boost_cur_params -> de_energise_kpa_scaled = kpaScaled;
 }
 
 void boost_control_alter_de_energise_kpa_scaled(int deEnergiseKpaScaledDelta)
 {
-	int newVal = (int)boost_cur_params.de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
+	int newVal = (int)boost_cur_params -> de_energise_kpa_scaled + deEnergiseKpaScaledDelta;
 
-	if(newVal > 0) boost_cur_params.de_energise_kpa_scaled = newVal; else boost_cur_params.de_energise_kpa_scaled = 0;
+	if(newVal > 0) boost_cur_params -> de_energise_kpa_scaled = newVal; else boost_cur_params -> de_energise_kpa_scaled = 0;
 }
 
 unsigned boost_control_get_pid_active_kpa_scaled()
 {
-	return boost_cur_params.pid_active_kpa_scaled;
+	return boost_cur_params -> pid_active_kpa_scaled;
 }
 
 void boost_control_set_pid_active_kpa_scaled(unsigned kpaScaled)
 {
-	boost_cur_params.pid_active_kpa_scaled = kpaScaled;
+	boost_cur_params -> pid_active_kpa_scaled = kpaScaled;
 }
 
 void boost_control_alter_pid_active_kpa_scaled(int delta)
 {
-	int newVal = (int)boost_cur_params.pid_active_kpa_scaled + delta;
+	int newVal = (int)boost_cur_params -> pid_active_kpa_scaled + delta;
 
-	if(newVal > 0) boost_cur_params.pid_active_kpa_scaled = newVal; else boost_cur_params.pid_active_kpa_scaled = 0;
+	if(newVal > 0) boost_cur_params -> pid_active_kpa_scaled = newVal; else boost_cur_params -> pid_active_kpa_scaled = 0;
 }
 
 unsigned boost_control_get_pid_prop_const_scaled()
 {
-	return boost_cur_params.pid_prop_const_scaled;
+	return boost_cur_params -> pid_prop_const_scaled;
 }
 
 void boost_control_set_pid_prop_const_scaled(unsigned pidPropConstScaled)
 {
-	boost_cur_params.pid_prop_const_scaled = pidPropConstScaled;
+	boost_cur_params -> pid_prop_const_scaled = pidPropConstScaled;
 }
 
 void boost_control_alter_pid_prop_const_scaled(int pidPropConstScaledDelta)
 {
-	int newVal = (int)boost_cur_params.pid_prop_const_scaled + pidPropConstScaledDelta;
+	int newVal = (int)boost_cur_params -> pid_prop_const_scaled + pidPropConstScaledDelta;
 
-	if(newVal > 0) boost_cur_params.pid_prop_const_scaled = newVal; else boost_cur_params.pid_prop_const_scaled = 0;
+	if(newVal > 0) boost_cur_params -> pid_prop_const_scaled = newVal; else boost_cur_params -> pid_prop_const_scaled = 0;
 }
 
 unsigned boost_control_get_pid_integ_const_scaled()
 {
-	return boost_cur_params.pid_integ_const_scaled;
+	return boost_cur_params -> pid_integ_const_scaled;
 }
 
 void boost_control_set_pid_integ_const_scaled(unsigned pidIntegConstScaled)
 {
-	boost_cur_params.pid_integ_const_scaled = pidIntegConstScaled;
+	boost_cur_params -> pid_integ_const_scaled = pidIntegConstScaled;
 }
 
 void boost_control_alter_pid_integ_const_scaled(int pidIntegConstScaledDelta)
 {
-	int newVal = (int)boost_cur_params.pid_integ_const_scaled + pidIntegConstScaledDelta;
+	int newVal = (int)boost_cur_params -> pid_integ_const_scaled + pidIntegConstScaledDelta;
 
-	if(newVal > 0) boost_cur_params.pid_integ_const_scaled = newVal; else boost_cur_params.pid_integ_const_scaled = 0;
+	if(newVal > 0) boost_cur_params -> pid_integ_const_scaled = newVal; else boost_cur_params -> pid_integ_const_scaled = 0;
 }
 
 unsigned boost_control_get_pid_deriv_const_scaled()
 {
-	return boost_cur_params.pid_deriv_const_scaled;
+	return boost_cur_params -> pid_deriv_const_scaled;
 }
 
 void boost_control_set_pid_deriv_const_scaled(unsigned pidDerivConstScaled)
 {
-	boost_cur_params.pid_deriv_const_scaled = pidDerivConstScaled;
+	boost_cur_params -> pid_deriv_const_scaled = pidDerivConstScaled;
 }
 
 void boost_control_alter_pid_deriv_const_scaled(int pidDerivConstScaledDelta)
 {
-	int newVal = (int)boost_cur_params.pid_deriv_const_scaled + pidDerivConstScaledDelta;
+	int newVal = (int)boost_cur_params -> pid_deriv_const_scaled + pidDerivConstScaledDelta;
 
-	if(newVal > 0) boost_cur_params.pid_deriv_const_scaled = newVal; else boost_cur_params.pid_deriv_const_scaled = 0;
+	if(newVal > 0) boost_cur_params -> pid_deriv_const_scaled = newVal; else boost_cur_params -> pid_deriv_const_scaled = 0;
 }
 
 unsigned boost_control_get_max_duty_scaled()
 {
-	return boost_cur_params.max_duty;
+	return boost_cur_params -> max_duty;
 }
 
 void boost_control_set_max_duty_scaled(unsigned maxDuty)
 {
-	boost_cur_params.max_duty = maxDuty;
+	boost_cur_params -> max_duty = maxDuty;
 
-	if(boost_cur_params.max_duty > 1000) boost_cur_params.max_duty = 1000;
+	if(boost_cur_params -> max_duty > 1000) boost_cur_params -> max_duty = 1000;
 }
 
 void boost_control_alter_max_duty_scaled(int maxDutyDelta)
 {
-	int newVal = (int)boost_cur_params.max_duty + maxDutyDelta;
+	int newVal = (int)boost_cur_params -> max_duty + maxDutyDelta;
 
-	if(newVal > 0) boost_cur_params.max_duty = newVal; else boost_cur_params.max_duty = 0;
+	if(newVal > 0) boost_cur_params -> max_duty = newVal; else boost_cur_params -> max_duty = 0;
 
-	if(boost_cur_params.max_duty > 1000) boost_cur_params.max_duty = 1000;
+	if(boost_cur_params -> max_duty > 1000) boost_cur_params -> max_duty = 1000;
 }
 
 unsigned boost_control_get_zero_point_duty_scaled()
 {
-	return boost_cur_params.zero_point_duty;
+	return boost_cur_params -> zero_point_duty;
 }
 
 void boost_control_set_zero_point_duty_scaled(unsigned zeroPointDuty)
 {
-	boost_cur_params.zero_point_duty = zeroPointDuty;
+	boost_cur_params -> zero_point_duty = zeroPointDuty;
 
-	if(boost_cur_params.zero_point_duty > 1000) boost_cur_params.zero_point_duty = 1000;
+	if(boost_cur_params -> zero_point_duty > 1000) boost_cur_params -> zero_point_duty = 1000;
 }
 
 void boost_control_alter_zero_point_duty_scaled(int dutyDelta)
 {
-	int newVal = (int)boost_cur_params.zero_point_duty + dutyDelta;
+	int newVal = (int)boost_cur_params -> zero_point_duty + dutyDelta;
 
-	if(newVal > 0) boost_cur_params.zero_point_duty = newVal; else boost_cur_params.zero_point_duty = 0;
+	if(newVal > 0) boost_cur_params -> zero_point_duty = newVal; else boost_cur_params -> zero_point_duty = 0;
 
-	if(boost_cur_params.zero_point_duty > 1000) boost_cur_params.zero_point_duty = 1000;
+	if(boost_cur_params -> zero_point_duty > 1000) boost_cur_params -> zero_point_duty = 1000;
 }
 
 unsigned boost_control_get_current_duty_scaled()
@@ -372,15 +373,15 @@ void process_control_solenoid()
 {
 	if(!test_mode)
 	{
-		uint32_t curBoostScaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
+		int curBoostScaled = boost_map_kpa_scaled - STD_ATM_PRESSURE;
 
 		// Apply hysterisis to enable/disable about de-energise point.
-		if(boost_energised && curBoostScaled < (boost_cur_params.de_energise_kpa_scaled - DE_ENERGISE_HYSTERESIS))
+		if(boost_energised && curBoostScaled < ((int)boost_cur_params -> de_energise_kpa_scaled - DE_ENERGISE_HYSTERESIS))
 		{
 			boost_energised = false;
 			disable_solenoid();
 		}
-		else if(!boost_energised && curBoostScaled > boost_cur_params.de_energise_kpa_scaled)
+		else if(!boost_energised && curBoostScaled > (int)boost_cur_params -> de_energise_kpa_scaled)
 		{
 			boost_energised = true;
 			enable_solenoid();
@@ -388,10 +389,10 @@ void process_control_solenoid()
 
 		if(boost_energised)
 		{
-			if(curBoostScaled < boost_cur_params.pid_active_kpa_scaled)
+			if(curBoostScaled < (int)boost_cur_params -> pid_active_kpa_scaled)
 			{
 				// Just pin at max duty.
-				set_solenoid_duty(boost_cur_params.max_duty);
+				set_solenoid_duty(boost_cur_params -> max_duty);
 
 				boost_pid_active = false;
 			}
@@ -409,13 +410,13 @@ void process_control_solenoid()
 					boost_pid_active = true;
 				}
 
-				float error = (curBoostScaled - boost_cur_params.max_kpa_scaled) / 1000.0;
+				float error = (curBoostScaled - (int)boost_cur_params -> max_kpa_scaled) / 1000.0;
 
 				float deltaTime = absolute_time_diff_us(boost_last_pid_proc_time, cur_proc_time) / 1000.0;
 
 				// Calc proportional and deriviative terms.
-				float controlVar = error * boost_cur_params.pid_prop_const_scaled + (error - boost_pid_prev_error) *
-					boost_cur_params.pid_deriv_const_scaled;
+				float controlVar = error * (float)boost_cur_params -> pid_prop_const_scaled + (error - boost_pid_prev_error) *
+					(float)boost_cur_params -> pid_deriv_const_scaled;
 
 				// Use an approximation to a time limited integration term.
 				// This removes a proportion of the average from the term and adds in the value associated with the current
@@ -423,15 +424,17 @@ void process_control_solenoid()
 				boost_pid_integ -= deltaTime * boost_pid_integ / PID_INTEG_SUM_TIME;
 				boost_pid_integ += error * deltaTime;
 
-				controlVar += boost_pid_integ * boost_cur_params.pid_integ_const_scaled;
+				controlVar += boost_pid_integ * (float)boost_cur_params -> pid_integ_const_scaled;
 
 				// Map control var to duty cycle and set duty cycle.
 				// Use one to one correspondence between control var and duty cycle with zero point adjustment so that
 				// a control var of zero should match the required boost output.
 
-				float duty = controlVar + boost_cur_params.zero_point_duty;
+				float duty = controlVar + (float)boost_cur_params -> zero_point_duty / 10.0;
 
-				if(duty > boost_cur_params.max_duty) duty = boost_cur_params.max_duty;
+				float maxDuty = (float)boost_cur_params -> max_duty / 10.0;
+
+				if(duty > maxDuty) duty = maxDuty;
 				if(duty < 0.0) duty = 0.0;
 
 				set_solenoid_duty(duty);

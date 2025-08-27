@@ -42,13 +42,14 @@ struct boost_control_parameters {
 
 /**
  * Get all boost control parameters.
- * @param params Populate this with current parameters.
+ * @param params Populate (copy into) this with current parameters.
  */
 void boost_control_parameters_get(boost_control_parameters* params);
 
 /**
  * Set all boost control parameters.
- * @param params Parameter data.
+ * @note This doesn't copy but uses the supplied struct directly.
+ * @param params Parameter data to use.
  */
 void boost_control_parameters_set(boost_control_parameters* params);
 

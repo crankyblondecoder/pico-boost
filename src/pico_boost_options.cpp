@@ -151,9 +151,9 @@ void alter_cur_preset_index(int delta);
 // J: BOOST_PID_INTEG_CONST
 // D: BOOST_PID_DERIV_CONST
 // Q: BOOST_MAX_DUTY
+// O: BOOST_ZERO_POINT_DUTY
 // R: DISPLAY_MAX_BRIGHTNESS
 // H: DISPLAY_MIN_BRIGHTNESS
-// O: BOOST_ZERO_POINT_DUTY
 // Y: FACTORY_RESET
 
 void boost_options_process_switches()
@@ -681,8 +681,10 @@ void display_current_duty()
 
 void display_current_preset_index()
 {
+	// Note: Preset index is displayed from 1 -> n even though it is zero based.
+
 	// Display just 1 digit.
-	display -> encodeNumber(cur_boost_preset_index, 3, 3, disp_data);
+	display -> encodeNumber(cur_boost_preset_index + 1, 3, 3, disp_data);
 
 	if(!edit_mode || displayFlashOn)
 	{
@@ -1080,7 +1082,12 @@ void alter_cur_preset_index(int delta)
 
 	if(newPresetIndex > 4) newPresetIndex = 0;
 
-	boost_control_parameters_set(boost_presets + cur_boost_preset_index);
+	if(cur_boost_preset_index != newPresetIndex)
+	{
+		cur_boost_preset_index = newPresetIndex;
+
+		boost_options_setup_from_cur_preset();
+	}
 }
 
 void invoke_factory_reset()
