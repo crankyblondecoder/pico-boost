@@ -668,7 +668,6 @@ void display_current_duty()
 {
 	unsigned curDuty = boost_control_get_current_duty_scaled();
 
-	// Show max kpa with 0 decimal points.
 	unsigned dispDuty = curDuty / 10;
 
 	// Display just 3 digits of kPa value.

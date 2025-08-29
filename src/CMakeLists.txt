@@ -16,8 +16,8 @@ add_executable(pico_boost
 	Eeprom.cpp
 	Eeprom_24CS256.cpp
 	pico_boost.cpp
-	pico_boost_options.cpp
-	pico_boost_control.cpp
+	BoostOptions.cpp
+	BoostControl.cpp
 	PicoAdcReader.cpp
 	PicoPwm.cpp
 	PicoSwitch.cpp

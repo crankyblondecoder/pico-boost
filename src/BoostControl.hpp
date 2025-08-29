@@ -208,7 +208,7 @@ class BoostControl
 		void alterZeroPointDutyScaled(int dutyDelta);
 
 		/**
-		 * Get the current boost control solenoid duty cycle. Scaled by 10.
+		 * Get the current boost control solenoid duty cycle, in %. Scaled by 10.
 		 */
 		unsigned getCurrentDutyScaled();
 

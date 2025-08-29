@@ -46,11 +46,13 @@ class PicoPwm
 
 		/**
 		 * Get the current duty cycle for channel A.
+		 * @returns Duty cycle, in %.
 		 */
 		float getDutyA();
 
 		/**
 		 * Get the current duty cycle for channel B.
+		 * @returns Duty cycle, in %.
 		 */
 		float getDutyB();
 
@@ -80,8 +82,8 @@ class PicoPwm
 
 		/**
 		 * Set the duty cycle for one or both channels of the slice.
-		 * @param dutyA Duty cycle for channel A. A negative value means "Don't set".
-		 * @param dutyB Duty cycle for channel B. A negative value means "Don't set".
+		 * @param dutyA Duty cycle for channel A, in %. A negative value means "Don't set".
+		 * @param dutyB Duty cycle for channel B, in %. A negative value means "Don't set".
 		 */
 		void __setDuty(float dutyA, float dutyB);
 
