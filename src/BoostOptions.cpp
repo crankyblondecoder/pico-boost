@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "hardware/gpio.h"
+
 #include "BoostOptions.hpp"
 
 extern bool debug;
@@ -34,8 +36,10 @@ BoostOptions::~BoostOptions()
 	if(_minBrightnessInput) delete _minBrightnessInput;
 }
 
-BoostOptions::BoostOptions()
+BoostOptions::BoostOptions(BoostControl* boostControl)
 {
+	_boostControl = boostControl;
+
 	_curSelectedOption = _defaultSelectOption;
 
 	// Create EEPROM instance and initialise it.
@@ -79,115 +83,115 @@ BoostOptions::BoostOptions()
 void BoostOptions::poll()
 {
 	// Note: Make sure the polling frequency is high enough that switches can debounce.
-	select_up_button -> poll();
-	down_button -> poll();
-	min_brightness_input -> poll();
+	_selectUpButton -> poll();
+	_downButton -> poll();
+	_minBrightnessInput -> poll();
 
-	display_use_min_brightness = min_brightness_input -> getSwitchState();
+	_displayUseMinBrightness = _minBrightnessInput -> getSwitchState();
 
-	boost_options_process_switches();
+	__processSwitches();
 
 	// Normal non-options display is active.
 	absolute_time_t curTime = get_absolute_time();
 
-	if(debug || curTime >= nextDisplayRenderTime)
+	if(debug || curTime >= _nextDisplayRenderTime)
 	{
 		// Set brightness of display.
-		if(display_use_min_brightness)
+		if(_displayUseMinBrightness)
 		{
-			display -> setBrightness(display_min_brightness);
+			_display -> setBrightness(_displayMinBrightness);
 		}
 		else
 		{
-			display -> setBrightness(display_max_brightness);
+			_display -> setBrightness(_displayMaxBrightness);
 		}
 
 		// Process current display flashing toggle.
-		if(curTime > nextDisplayFlashToggleTime) {
+		if(curTime > _nextDisplayFlashToggleTime) {
 
-			displayFlashOn = !displayFlashOn;
+			_displayFlashOn = !_displayFlashOn;
 
-			nextDisplayFlashToggleTime = delayed_by_ms(nextDisplayFlashToggleTime, DISPLAY_FLASH_PERIOD);
+			_nextDisplayFlashToggleTime = delayed_by_ms(_nextDisplayFlashToggleTime, DISPLAY_FLASH_PERIOD);
 		}
 
 		// Limit the frame rate so the display doesn't "strobe".
-		nextDisplayRenderTime = delayed_by_ms(nextDisplayRenderTime, DISPLAY_FRAME_RATE);
+		_nextDisplayRenderTime = delayed_by_ms(_nextDisplayRenderTime, DISPLAY_FRAME_RATE);
 
-		switch(cur_selected_option)
+		switch(_curSelectedOption)
 		{
 			case CURRENT_BOOST_KPA:
 
-				display_current_boost_kpa();
+				__displayCurrentBoostKpa();
 				break;
 
 			case CURRENT_BOOST_PSI:
 
-				display_current_boost_psi();
+				__displayCurrentBoostPsi();
 				break;
 
 			case CURRENT_DUTY:
 
-				display_current_duty();
+				__displayCurrentDuty();
 				break;
 
 			case CURRENT_PRESET_INDEX:
 
-				display_current_preset_index();
+				__displayCurrentPresetIndex();
 				break;
 
 			case BOOST_MAX_KPA:
 
-				display_max_boost();
+				__displayMaxBoost();
 				break;
 
 			case BOOST_DE_ENERGISE_KPA:
 
-				display_boost_de_energise();
+				__displayBoostDeEnergise();
 				break;
 
 			case BOOST_PID_ACTIVE_KPA:
 
-				display_boost_pid_active();
+				__displayBoostPidActive();
 				break;
 
 			case BOOST_PID_PROP_CONST:
 
-				display_boost_pid_prop_const();
+				__displayBoostPidPropConst();
 				break;
 
 			case BOOST_PID_INTEG_CONST:
 
-				display_boost_pid_integ_const();
+				__displayBoostPidIntegConst();
 				break;
 
 			case BOOST_PID_DERIV_CONST:
 
-				display_boost_pid_deriv_const();
+				__displayBoostPidDerivConst();
 				break;
 
 			case BOOST_MAX_DUTY:
 
-				display_boost_max_duty();
+				__displayBoostMaxDuty();
 				break;
 
 			case BOOST_ZERO_POINT_DUTY:
 
-				display_boost_zero_point_duty();
+				__displayBoostZeroPointDuty();
 				break;
 
 			case DISPLAY_MAX_BRIGHTNESS:
 
-				display_show_max_brightness();
+				__displayShowMaxBrightness();
 				break;
 
 			case DISPLAY_MIN_BRIGHTNESS:
 
-				display_show_min_brightness();
+				__displayShowMinBrightness();
 				break;
 
 			case FACTORY_RESET:
 
-				display_show_factory_reset();
+				__displayShowFactoryReset();
 				break;
 		}
 	}
@@ -195,7 +199,7 @@ void BoostOptions::poll()
 
 void BoostOptions::__displayCurrentBoostKpa()
 {
-	int boostKpaScaled = _boostControl.getKpaScaled();
+	int boostKpaScaled = _boostControl -> getKpaScaled();
 
 	// Show kpa with 0 decimal points.
 	int dispKpa = boostKpaScaled / 1000;
@@ -204,11 +208,11 @@ void BoostOptions::__displayCurrentBoostKpa()
 	// Display just 3 digits of kPa value.
 	_display -> encodeNumber(dispKpa, 3, 3, _dispData);
 
-	if(_boostControl.isMaxBoostReached())
+	if(_boostControl -> isMaxBoostReached())
 	{
 		_dispData[0] = _display -> encodeAlpha('L');
 	}
-	else if(_boostControl.isEnergised())
+	else if(_boostControl -> isEnergised())
 	{
 		_dispData[0] = _display -> encodeAlpha('E');
 	}
@@ -230,7 +234,7 @@ void BoostOptions::__displayCurrentBoostKpa()
 
 void BoostOptions::__displayCurrentBoostPsi()
 {
-	int boostPsiScaled = _boostControl.getPsiScaled();
+	int boostPsiScaled = _boostControl -> getPsiScaled();
 
 	// Show psi with 0 decimal points.
 	int dispPsi = boostPsiScaled / 10;
@@ -242,11 +246,11 @@ void BoostOptions::__displayCurrentBoostPsi()
 	// Default to nothing in the left most char for now.
 	_dispData[0] = 0;
 
-	if(_boostControl.isMaxBoostReached())
+	if(_boostControl -> isMaxBoostReached())
 	{
 		_dispData[0] = _display -> encodeAlpha('L');
 	}
-	else if(_boostControl.isEnergised())
+	else if(_boostControl -> isEnergised())
 	{
 		_dispData[0] = _display -> encodeAlpha('E');
 	}
@@ -268,7 +272,7 @@ void BoostOptions::__displayCurrentBoostPsi()
 
 void BoostOptions::__displayCurrentDuty()
 {
-	unsigned curDuty = _boostControl.getCurrentDutyScaled();
+	unsigned curDuty = _boostControl -> getCurrentDutyScaled();
 
 	unsigned dispDuty = curDuty / 10;
 
@@ -282,7 +286,7 @@ void BoostOptions::__displayCurrentDuty()
 
 void BoostOptions::__displayMaxBoost()
 {
-	unsigned boost_max_kpa_scaled = _boostControl.getMaxKpaScaled();
+	unsigned boost_max_kpa_scaled = _boostControl -> getMaxKpaScaled();
 
 	// Show max kpa with 0 decimal points.
 	unsigned dispKpa = boost_max_kpa_scaled / 1000;
@@ -304,7 +308,7 @@ void BoostOptions::__displayMaxBoost()
 
 void BoostOptions::__displayBoostDeEnergise()
 {
-	unsigned boostDeEnergisedScaled = _boostControl.getDeEnergiseKpaScaled();
+	unsigned boostDeEnergisedScaled = _boostControl -> getDeEnergiseKpaScaled();
 
 	// Show with 0 decimal points.
 	unsigned dispKpa = boostDeEnergisedScaled / 1000;
@@ -326,7 +330,7 @@ void BoostOptions::__displayBoostDeEnergise()
 
 void BoostOptions::__displayBoostPidActive()
 {
-	unsigned boost_pid_active_kpa_scaled = _boostControl.getPidActiveKpaScaled();
+	unsigned boost_pid_active_kpa_scaled = _boostControl -> getPidActiveKpaScaled();
 
 	// Show with 0 decimal points.
 	unsigned dispKpa = boost_pid_active_kpa_scaled / 1000;
@@ -348,7 +352,7 @@ void BoostOptions::__displayBoostPidActive()
 
 void BoostOptions::__displayBoostPidPropConst()
 {
-	unsigned boostPidPropScaled = _boostControl.getPidPropConstScaled();
+	unsigned boostPidPropScaled = _boostControl -> getPidPropConstScaled();
 
 	// Show with 2 decimal points.
 	unsigned dispKpa = boostPidPropScaled / 10;
@@ -369,7 +373,7 @@ void BoostOptions::__displayBoostPidPropConst()
 
 void BoostOptions::__displayBoostPidIntegConst()
 {
-	unsigned boost_pid_integ_scaled = _boostControl.getPidIntegConstScaled();
+	unsigned boost_pid_integ_scaled = _boostControl -> getPidIntegConstScaled();
 
 	// Show with 2 decimal points.
 	unsigned dispKpa = boost_pid_integ_scaled / 10;
@@ -390,7 +394,7 @@ void BoostOptions::__displayBoostPidIntegConst()
 
 void BoostOptions::__displayBoostPidDerivConst()
 {
-	unsigned boost_pid_deriv_scaled = _boostControl.getPidDerivConstScaled();
+	unsigned boost_pid_deriv_scaled = _boostControl -> getPidDerivConstScaled();
 
 	// Show with 2 decimal points.
 	unsigned dispKpa = boost_pid_deriv_scaled / 10;
@@ -411,7 +415,7 @@ void BoostOptions::__displayBoostPidDerivConst()
 
 void BoostOptions::__displayBoostMaxDuty()
 {
-	unsigned boost_max_duty = _boostControl.getMaxDutyScaled();
+	unsigned boost_max_duty = _boostControl -> getMaxDutyScaled();
 
 	// Show with 1 decimal point.
 	unsigned dispVal = boost_max_duty;
@@ -432,7 +436,7 @@ void BoostOptions::__displayBoostMaxDuty()
 
 void BoostOptions::__displayBoostZeroPointDuty()
 {
-	unsigned boost_zero_point_duty = _boostControl.getZeroPointDutyScaled();
+	unsigned boost_zero_point_duty = _boostControl -> getZeroPointDutyScaled();
 
 	// Show with 1 decimal point.
 	unsigned dispVal = boost_zero_point_duty;
@@ -537,11 +541,11 @@ void BoostOptions::__invokeFactoryReset()
 void BoostOptions::__setDefaults()
 {
 	// Initialise boost presets to defaults.
-	_boostControl.populateDefaultParameters(_boostPresets);
-	_boostControl.populateDefaultParameters(_boostPresets + 1);
-	_boostControl.populateDefaultParameters(_boostPresets + 2);
-	_boostControl.populateDefaultParameters(_boostPresets + 3);
-	_boostControl.populateDefaultParameters(_boostPresets + 4);
+	_boostControl -> populateDefaultParameters(_boostPresets);
+	_boostControl -> populateDefaultParameters(_boostPresets + 1);
+	_boostControl -> populateDefaultParameters(_boostPresets + 2);
+	_boostControl -> populateDefaultParameters(_boostPresets + 3);
+	_boostControl -> populateDefaultParameters(_boostPresets + 4);
 
 	_curBoostPresetIndex = 0;
 
@@ -560,7 +564,7 @@ void BoostOptions::__setDefaults()
 
 void BoostOptions::__setupFromCurPreset()
 {
-	_boostControl.populateDefaultParameters(_boostPresets + _curBoostPresetIndex);
+	_boostControl -> populateDefaultParameters(_boostPresets + _curBoostPresetIndex);
 }
 
 bool BoostOptions::__commitToEeprom()
@@ -707,4 +711,267 @@ void BoostOptions::__alterCurPresetIndex(int delta)
 
 		__setupFromCurPreset();
 	}
+}
+
+void BoostOptions::__processSwitches()
+{
+	unsigned curSelectUpStateIndex = _selectUpButton -> getCurrentStateCycleIndex();
+	unsigned curDownStateIndex = _downButton -> getCurrentStateCycleIndex();
+
+	bool selectUpStateUnProc = curSelectUpStateIndex != _lastProcSelectUpButtonStateIndex;
+	bool downStateUnProc = curDownStateIndex != _lastProcDownButtonStateIndex;
+
+	// Full processed flags.
+	bool selectUpProced = false;
+	bool downProced = false;
+
+	// Check for test invokation. Both buttons pressed.
+	if(selectUpStateUnProc && downStateUnProc && _selectUpButton -> getSwitchState() &&
+		_selectUpButton -> getSwitchStateDuration() > TEST_START_TIMEOUT && _downButton -> getSwitchState() &&
+		_downButton -> getSwitchStateDuration() > TEST_START_TIMEOUT)
+	{
+		__runTests();
+
+		_lastProcSelectUpButtonStateIndex = curSelectUpStateIndex;
+		_lastProcDownButtonStateIndex = curDownStateIndex;
+
+		return;
+	}
+
+	// Regardless of the current selected option, both switches not being pressed for greater than the mode complete timeout
+	// puts the system back into a default mode. However solenoid duty cycle being displayed stays as is.
+	if(!_selectUpButton -> getSwitchState() && !_downButton -> getSwitchState() &&
+		_selectUpButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		_downButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT)
+	{
+		if(_curSelectedOption != CURRENT_DUTY && _curSelectedOption != CURRENT_BOOST_PSI &&
+			_curSelectedOption != CURRENT_BOOST_KPA)
+		{
+			_curSelectedOption = _defaultSelectOption;
+		}
+
+		_editMode = false;
+
+		selectUpProced = true;
+		downProced = true;
+	}
+	else if(!_editMode)
+	{
+		if(selectUpStateUnProc || downStateUnProc)
+		{
+			// Look for edit mode entry, which can't happen in (default) boost display mode or solenoid valve duty display mode.
+			if(_curSelectedOption > CURRENT_DUTY && _selectUpButton -> getSwitchState() &&
+				_selectUpButton -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME && !_downButton -> getSwitchState())
+			{
+				_editMode = true;
+
+				selectUpProced = true;
+				downProced = true;
+			}
+			else if(selectUpStateUnProc && !_selectUpButton -> getSwitchState())
+			{
+				// Change to the next state on select button release.
+				_curSelectedOption++;
+
+				if(_curSelectedOption >= SELECT_OPTION_LAST) _curSelectedOption = CURRENT_BOOST_PSI;
+
+				selectUpProced = true;
+				downProced = true;
+			}
+			else if(downStateUnProc && !_downButton -> getSwitchState())
+			{
+				// Change to the previous state on down button release.
+				_curSelectedOption--;
+
+				if(_curSelectedOption < 0) _curSelectedOption = SELECT_OPTION_LAST - 1;
+
+				selectUpProced = true;
+				downProced = true;
+			}
+		}
+	}
+	else
+	{
+		// Should be in edit mode.
+
+		// Both buttons pressed at the same time exit edit mode.
+		if(_selectUpButton -> getSwitchState() && _downButton -> getSwitchState())
+		{
+			_editMode = false;
+
+			selectUpProced = true;
+			downProced = true;
+
+			// If in factory reset mode, explicit exit of edit mode triggers the reset.
+			if(_curSelectedOption == FACTORY_RESET) __invokeFactoryReset();
+
+			// Save options to EEPROM.
+			__commitToEeprom();
+		}
+		else
+		{
+			// Note: Non fast edit mode relies on button release to trigger change otherwise fast edit mode won't be detected
+			// and edit mode exit will cause a simultaneous change in values which isn't desired.
+
+			int delta = 0;
+
+			if(selectUpStateUnProc)
+			{
+				bool switchState = _selectUpButton -> getSwitchState();
+
+				unsigned upDuration = _selectUpButton -> getSwitchStateDuration();
+
+				if(switchState && upDuration > EDIT_MODE_FAST_TIME)
+				{
+					// Rate limit fast edit mode.
+					if(upDuration - _lastEditFastModeUpDuration > EDIT_MODE_FAST_REPEAT_RATE)
+					{
+						delta = 1;
+						_lastEditFastModeUpDuration = upDuration;
+					}
+
+					// Note: Button is left as unprocessed so this block can be re-entered.
+				}
+				else if(!switchState)
+				{
+					delta = 1;
+
+					// Button is full processed.
+					selectUpProced = true;
+				}
+				else
+				{
+					// This should invoke fast edit change immediately.
+					_lastEditFastModeUpDuration = 0;
+				}
+			}
+
+			if(downStateUnProc)
+			{
+				bool switchState = _downButton -> getSwitchState();
+
+				unsigned downDuration = _downButton -> getSwitchStateDuration();
+
+				if(switchState && downDuration > EDIT_MODE_FAST_TIME)
+				{
+					// Rate limit fast edit mode.
+					if(downDuration - _lastEditFastModeDownDuration > EDIT_MODE_FAST_REPEAT_RATE)
+					{
+						delta = -1;
+						_lastEditFastModeDownDuration = downDuration;
+					}
+
+					// Note: Button is left as unprocessed so this block can be re-entered.
+				}
+				else if(!switchState)
+				{
+					delta = -1;
+
+					downProced = true;
+				}
+				else
+				{
+					// This should invoke fast edit change immediately.
+					_lastEditFastModeDownDuration = 0;
+				}
+			}
+
+			if(delta != 0)
+			{
+				switch(_curSelectedOption)
+				{
+					case CURRENT_PRESET_INDEX:
+
+						__alterCurPresetIndex(delta);
+						break;
+
+					case BOOST_MAX_KPA:
+
+						// Max kPa is scaled by 1000. Resolution 1.
+						_boostControl -> alterMaxKpaScaled(delta * 1000);
+						break;
+
+					case BOOST_DE_ENERGISE_KPA:
+
+						// De-energise is scaled by 1000. Resolution 1.
+						_boostControl -> alterDeEnergiseKpaScaled(delta * 1000);
+						break;
+
+					case BOOST_PID_ACTIVE_KPA:
+
+						// PID active is scaled by 1000. Resolution 1.
+						_boostControl -> alterPidActiveKpaScaled(delta * 1000);
+						break;
+
+					case BOOST_PID_PROP_CONST:
+
+						// PID proportional constant is scaled by 1000. Resolution 0.01.
+						_boostControl -> alterPidPropConstScaled(delta * 10);
+						break;
+
+					case BOOST_PID_INTEG_CONST:
+
+						// PID integration constant is scaled by 1000. Resolution 0.01.
+						_boostControl -> alterPidIntegConstScaled(delta * 10);
+						break;
+
+					case BOOST_PID_DERIV_CONST:
+
+						// PID derivative constant is scaled by 1000. Resolution 0.01.
+						_boostControl -> alterPidDerivConstScaled(delta * 10);
+						break;
+
+					case BOOST_MAX_DUTY:
+
+						// Boost solenoid maximum duty cycle is scaled by 10. Resolution 0.1.
+						_boostControl -> alterMaxDutyScaled(delta);
+						break;
+
+					case BOOST_ZERO_POINT_DUTY:
+
+						// Boost solenoid zero point duty cycle is scaled by 10. Resolution 0.1.
+						_boostControl -> alterZeroPointDutyScaled(delta);
+						break;
+
+					case DISPLAY_MAX_BRIGHTNESS:
+
+						// Maximum brightness 0-7.
+						_displayMaxBrightness += delta;
+						if(_displayMaxBrightness > 7) _displayMaxBrightness = 7;
+						break;
+
+					case DISPLAY_MIN_BRIGHTNESS:
+
+						// Minimum brightness 0-7.
+						_displayMinBrightness += delta;
+						if(_displayMinBrightness > 7) _displayMinBrightness = 7;
+						break;
+				}
+			}
+		}
+	}
+
+	// Save the indexes of any fully processed buttons.
+	if(selectUpProced) _lastProcSelectUpButtonStateIndex = curSelectUpStateIndex;
+	if(downProced) _lastProcDownButtonStateIndex = curDownStateIndex;
+}
+
+void BoostOptions::__runTests()
+{
+	// Allows testing equipment to detect test start.
+	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, true);
+
+	printf("Run tests starting.\n");
+
+	printf("Map supply V: %.3f\n", _boostControl -> mapReadSupplyVoltage());
+	printf("Map sensor V: %.3f\n", _boostControl -> mapReadSensorVoltage());
+
+	//__testEeprom();
+
+	printf("Testing solenoid valve.\n");
+	_boostControl -> testSolenoid();
+
+	printf("Run tests finished.\n");
+
+	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, false);
 }

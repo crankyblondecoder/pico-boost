@@ -8,8 +8,8 @@
 #include "pico/time.h"
 
 #include "gpioAlloc.hpp"
-#include "pico_boost_control.hpp"
-#include "pico_boost_options.hpp"
+#include "BoostControl.hpp"
+#include "BoostOptions.hpp"
 
 /** The ADC channel used to get VSYS voltage. */
 #define VSYS_REF_CHANNEL 3
@@ -18,6 +18,11 @@ bool debugMsgActive = true;
 
 // Debug flag to get around timers being a pain. Set during debug only.
 bool debug = false;
+
+/** Single boost control instance, instantiated on core 1. */
+BoostControl* boostControl = 0;
+
+BoostOptions* boostOptions = 0;
 
 void __core1_entry();
 
@@ -62,25 +67,36 @@ int main()
     gpio_set_function(I2C_BUS0_SCL_GPIO, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_BUS0_SCL_GPIO);
 
-	// Initialise the options module. Do this first so that boost control variables are set.
-	boost_options_init();
-
 	// Start second core which will read sensor data and control the wastegate solenoid.
 	multicore_launch_core1(__core1_entry);
+
+	// Wait for boost control to be instantiated on core 1.
+	while(!boostControl)
+	{
+		sleep_us(10);
+	}
+
+	// Wait for boost control to be ready for processing.
+	while(!boostControl -> ready())
+	{
+		sleep_us(10);
+	}
+
+	boostOptions = new BoostOptions(boostControl);
 
 	// Main processing loop. Used for user interaction.
 	while(1)
 	{
-		boost_options_poll();
+		boostOptions -> poll();
 	}
 }
 
 void __core1_entry()
 {
-	boost_control_init();
+	boostControl = new BoostControl();
 
 	while(1)
 	{
-		boost_control_poll();
+		boostControl -> poll();
 	}
 }

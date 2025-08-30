@@ -100,19 +100,19 @@ void boost_control_parameters_get(boost_control_parameters* params)
 
 void boost_control_parameters_set(boost_control_parameters* params)
 {
-	boost_cur_params.max_kpa_scaled = params -> max_kpa_scaled;
+	boost_cur_params -> max_kpa_scaled = params -> max_kpa_scaled;
 
-	boost_cur_params.de_energise_kpa_scaled = params -> de_energise_kpa_scaled;
+	boost_cur_params -> de_energise_kpa_scaled = params -> de_energise_kpa_scaled;
 
-	boost_cur_params.pid_prop_const_scaled = params -> pid_prop_const_scaled;
+	boost_cur_params -> pid_prop_const_scaled = params -> pid_prop_const_scaled;
 
-	boost_cur_params.pid_integ_const_scaled = params -> pid_integ_const_scaled;
+	boost_cur_params -> pid_integ_const_scaled = params -> pid_integ_const_scaled;
 
-	boost_cur_params.pid_deriv_const_scaled = params -> pid_deriv_const_scaled;
+	boost_cur_params -> pid_deriv_const_scaled = params -> pid_deriv_const_scaled;
 
-	boost_cur_params.max_duty = params -> max_duty;
+	boost_cur_params -> max_duty = params -> max_duty;
 
-	boost_cur_params.zero_point_duty = params -> zero_point_duty;
+	boost_cur_params -> zero_point_duty = params -> zero_point_duty;
 }
 
 void boost_control_parameters_populate_default(boost_control_parameters* params)

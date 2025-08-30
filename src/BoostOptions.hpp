@@ -44,7 +44,10 @@ class BoostOptions
 
 		virtual ~BoostOptions();
 
-		BoostOptions();
+		/**
+		 * @param boostControl Boost control instance to apply options to.
+		 */
+		BoostOptions(BoostControl* boostControl);
 
 		/** Select display value options. */
 		enum SelectOption
@@ -110,8 +113,8 @@ class BoostOptions
 
 	private:
 
-		/** Single boost control instance. */
-		BoostControl _boostControl;
+		/** Single boost control instance to apply options to. */
+		BoostControl* _boostControl;
 
 		/** Button for select/up operations. */
 		PicoSwitch* _selectUpButton;
@@ -251,6 +254,11 @@ class BoostOptions
 		 * Alter the current preset index by the given delta.
 		 */
 		void __alterCurPresetIndex(int delta);
+
+		/**
+		 * Process all option related switches.
+		 */
+		void __processSwitches();
 };
 
 #endif

@@ -26,6 +26,13 @@ BoostControl::BoostControl()
 	_nextBoostLatchTime = get_absolute_time();
 	_nextBoostReadTime = _nextBoostLatchTime;
 	_lastSolenoidProcTime = _nextBoostLatchTime;
+
+	_initialised = true;
+}
+
+bool BoostControl::ready()
+{
+	return _initialised;
 }
 
 void BoostControl::getParameters(BoostControlParameters* params)

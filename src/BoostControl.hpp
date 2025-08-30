@@ -40,6 +40,11 @@ class BoostControl
 		BoostControl();
 
 		/**
+		 * Get whether boost control is ready (initialised).
+		 */
+		bool ready();
+
+		/**
 		 * Get all boost control parameters.
 		 * @param params Populate (copy into) this with current parameters.
 		 */
@@ -231,6 +236,9 @@ class BoostControl
 
 	private:
 
+		/** Whether this has been initialised. */
+		bool _initialised = false;
+
 		/** Bosch map sensor to read current turbo pressure from. */
 		BoschMap_0261230119* _mapSensor = 0;
 
@@ -273,9 +281,6 @@ class BoostControl
 
 		/** PWM control. Assume N Channel Mosfet (IRLZ34N) is being used and the gate must be pulled to ground. */
 		PicoPwm* _pwmControl;
-
-		/** Current energised state of the boost control solenoid. Does NOT include 0% duty cycle. */
-		bool _energised = false;
 
 		/** Whether test mode is currently active. */
 		bool _testMode = false;
