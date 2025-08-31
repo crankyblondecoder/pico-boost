@@ -40,8 +40,6 @@ BoostOptions::BoostOptions(BoostControl* boostControl)
 {
 	_boostControl = boostControl;
 
-	_curSelectedOption = _defaultSelectOption;
-
 	// Create EEPROM instance and initialise it.
 	// Current Use wear levelled page of size 32.
 	// Current saved boost options size: 24
@@ -770,7 +768,7 @@ void BoostOptions::__processSwitches()
 			}
 			else if(selectUpStateUnProc && !_selectUpButton -> getSwitchState())
 			{
-				// Change to the next state on select button release.
+				// Change to the next state on select button _release_.
 				_curSelectedOption++;
 
 				if(_curSelectedOption >= SELECT_OPTION_LAST) _curSelectedOption = CURRENT_BOOST_PSI;
@@ -780,7 +778,7 @@ void BoostOptions::__processSwitches()
 			}
 			else if(downStateUnProc && !_downButton -> getSwitchState())
 			{
-				// Change to the previous state on down button release.
+				// Change to the previous state on down button _release_.
 				_curSelectedOption--;
 
 				if(_curSelectedOption < 0) _curSelectedOption = SELECT_OPTION_LAST - 1;

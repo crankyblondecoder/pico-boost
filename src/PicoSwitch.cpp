@@ -18,6 +18,9 @@ PicoSwitch::PicoSwitch(unsigned gpio, PullUpDown pullUpDown, unsigned activeCoun
 		case PULL_UP:
 
 			gpio_pull_up(gpio);
+			// Because there is a delay in counting the active state, if this is not done then the switch state will be
+			// initially incorrect.
+			_activeCount = _activeCountThreshold;
 			break;
 
 		case PULL_DOWN:
