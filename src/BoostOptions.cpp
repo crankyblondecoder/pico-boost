@@ -6,14 +6,14 @@
 
 extern bool debug;
 
-/** Amount of time that both buttons have to be pressed to invoke a test pass. */
-#define TEST_START_TIMEOUT 5000
+/** Amount of time that button(s) have to be pressed to invoke a test pass. */
+#define TEST_START_TIMEOUT 10000
 
 /** Amount of time of inactivity, in milliseconds, before the current mode ends and the system returns to default. */
 #define MODE_COMPLETE_TIMEOUT 5000
 
 /** Amount of time, in milliseconds, that the select button must be pressed to enter edit mode. */
-#define MODE_ENTER_EDIT_TIME 3000
+#define MODE_ENTER_EDIT_TIME 2500
 
 /** Amount of time, in milliseconds, that either up or down button must be pressed for to go into "fast" mode. */
 #define EDIT_MODE_FAST_TIME 1500
@@ -30,10 +30,18 @@ extern bool debug;
 BoostOptions::~BoostOptions()
 {
 	if(_eeprom24CS256) delete _eeprom24CS256;
+
 	if(_display) delete _display;
-	if(_selectUpButton) delete _selectUpButton;
-	if(_downButton) delete _downButton;
+
+	if(_selectButton) delete _selectButton;
+	if(_leftButton) delete _leftButton;
+	if(_rightButton) delete _rightButton;
+	if(_increaseButton) delete _increaseButton;
+	if(_decreaseButton) delete _decreaseButton;
+
 	if(_minBrightnessInput) delete _minBrightnessInput;
+
+	if(_presetSelectInput) delete _presetSelectInput;
 }
 
 BoostOptions::BoostOptions(BoostControl* boostControl)
@@ -64,14 +72,23 @@ BoostOptions::BoostOptions(BoostControl* boostControl)
 
 	_display -> setBrightness(_displayMaxBrightness);
 
-	// Up/Select mode button.
-	_selectUpButton = new PicoSwitch(UP_SELECT_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
+	// Setup navigation buttons.
 
-	// Down button.
-	_downButton = new PicoSwitch(DOWN_BUTTON_GPIO, PicoSwitch::PULL_UP, 5, 100);
+	_selectButton = new PicoSwitch(NAV_BTN_MIDDLE, PicoSwitch::PULL_UP, 5, 100);
+
+	_leftButton = new PicoSwitch(NAV_BTN_LEFT, PicoSwitch::PULL_UP, 5, 100);
+
+	_rightButton = new PicoSwitch(NAV_BTN_RIGHT, PicoSwitch::PULL_UP, 5, 100);
+
+	_increaseButton = new PicoSwitch(NAV_BTN_FORWARD, PicoSwitch::PULL_UP, 5, 100);
+
+	_decreaseButton = new PicoSwitch(NAV_BTN_BACK, PicoSwitch::PULL_UP, 5, 100);
 
 	// Min brightness.
 	_minBrightnessInput = new PicoSwitch(MIN_BRIGHTNESS_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
+
+	// Pre-defined preset index select.
+	_presetSelectInput = new PicoSwitch(PRESET_INDEX_SELECT_GPIO, PicoSwitch::PULL_DOWN, 5, 100);
 
 	_nextDisplayRenderTime = get_absolute_time();
 
@@ -81,9 +98,13 @@ BoostOptions::BoostOptions(BoostControl* boostControl)
 void BoostOptions::poll()
 {
 	// Note: Make sure the polling frequency is high enough that switches can debounce.
-	_selectUpButton -> poll();
-	_downButton -> poll();
+	_selectButton -> poll();
+	_leftButton -> poll();
+	_rightButton -> poll();
+	_increaseButton -> poll();
+	_decreaseButton -> poll();
 	_minBrightnessInput -> poll();
+	_presetSelectInput -> poll();
 
 	_displayUseMinBrightness = _minBrightnessInput -> getSwitchState();
 
@@ -137,6 +158,17 @@ void BoostOptions::poll()
 				__displayCurrentPresetIndex();
 				break;
 
+			case PRESET_SELECT_INDEX:
+
+				// TODO ...
+				blah;
+				break;
+
+			case AUTO_TUNE:
+
+				__displayAutoTune();
+				break;
+
 			case BOOST_MAX_KPA:
 
 				__displayMaxBoost();
@@ -179,17 +211,17 @@ void BoostOptions::poll()
 
 			case DISPLAY_MAX_BRIGHTNESS:
 
-				__displayShowMaxBrightness();
+				__displayMaxBrightness();
 				break;
 
 			case DISPLAY_MIN_BRIGHTNESS:
 
-				__displayShowMinBrightness();
+				__displayMinBrightness();
 				break;
 
 			case FACTORY_RESET:
 
-				__displayShowFactoryReset();
+				__displayFactoryReset();
 				break;
 		}
 	}
@@ -453,57 +485,86 @@ void BoostOptions::__displayBoostZeroPointDuty()
 	_display -> show(_dispData);
 }
 
-void BoostOptions::__displayShowMaxBrightness()
+void BoostOptions::__displayMaxBrightness()
 {
-	// Show with 0 decimal points.
+	// Show with 0 decimal points. Single digit only
 	unsigned dispVal = _displayMaxBrightness;
 
-	_display -> encodeNumber(dispVal, 3, 3, _dispData);
+	_display -> encodeNumber(dispVal, 1, 3, _dispData);
+
+	_dispData[2] = 0;
 
 	if(!_editMode || _displayFlashOn)
 	{
-		_dispData[0] = _display -> encodeAlpha('R');
+		_dispData[0] = _display -> encodeAlpha('B');
+		_dispData[1] = _display -> encodeAlpha('H');
 	}
 	else
 	{
 		_dispData[0] = 0;
+		_dispData[1] = 0;
 	}
 
 	_display -> show(_dispData);
 }
 
-void BoostOptions::__displayShowMinBrightness()
+void BoostOptions::__displayMinBrightness()
 {
-	// Show with 0 decimal points.
+	// Show with 0 decimal points. Single digit only.
 	unsigned dispVal = _displayMinBrightness;
 
-	_display -> encodeNumber(dispVal, 3, 3, _dispData);
+	_display -> encodeNumber(dispVal, 1, 3, _dispData);
+
+	_dispData[2] = 0;
 
 	if(!_editMode || _displayFlashOn)
 	{
-		_dispData[0] = _display -> encodeAlpha('H');
+		_dispData[0] = _display -> encodeAlpha('B');
+		_dispData[1] = _display -> encodeAlpha('L');
 	}
 	else
 	{
 		_dispData[0] = 0;
+		_dispData[1] = 0;
 	}
 
 	_display -> show(_dispData);
 }
 
-void BoostOptions::__displayShowFactoryReset()
+void BoostOptions::__displayFactoryReset()
 {
-	_dispData[1] = 0;
 	_dispData[2] = 0;
 	_dispData[3] = 0;
 
 	if(!_editMode || _displayFlashOn)
 	{
-		_dispData[0] = _display -> encodeAlpha('Y');
+		_dispData[0] = _display -> encodeAlpha('F');
+		_dispData[1] = _display -> encodeAlpha('R');
 	}
 	else
 	{
 		_dispData[0] = 0;
+		_dispData[1] = 0;
+	}
+
+	_display -> show(_dispData);
+}
+
+void BoostOptions::__displayAutoTune()
+{
+	if(!_editMode || _displayFlashOn)
+	{
+		_dispData[0] = _display -> encodeAlpha('A');
+		_dispData[1] = _display -> encodeAlpha('U');
+		_dispData[2] = _display -> encodeAlpha('T');
+		_dispData[3] = _display -> encodeAlpha('O');
+	}
+	else
+	{
+		_dispData[0] = 0;
+		_dispData[1] = 0;
+		_dispData[2] = 0;
+		_dispData[3] = 0;
 	}
 
 	_display -> show(_dispData);
@@ -514,15 +575,19 @@ void BoostOptions::__displayCurrentPresetIndex()
 	// Note: Preset index is displayed from 1 -> n even though it is zero based.
 
 	// Display just 1 digit.
-	_display -> encodeNumber(_curBoostPresetIndex + 1, 3, 3, _dispData);
+	_display -> encodeNumber(_curBoostPresetIndex + 1, 1, 3, _dispData);
+
+	_dispData[2] = 0;
 
 	if(!_editMode || _displayFlashOn)
 	{
-		_dispData[0] = _display -> encodeAlpha('T');
+		_dispData[0] = _display -> encodeAlpha('B');
+		_dispData[1] = _display -> encodeAlpha('N');
 	}
 	else
 	{
 		_dispData[0] = 0;
+		_dispData[1] = 0;
 	}
 
 	_display -> show(_dispData);
@@ -536,6 +601,11 @@ void BoostOptions::__invokeFactoryReset()
 	__commitToEeprom();
 }
 
+void BoostOptions::__invokeAutoTune()
+{
+	// TODO ...
+}
+
 void BoostOptions::__setDefaults()
 {
 	// Initialise boost presets to defaults.
@@ -547,7 +617,7 @@ void BoostOptions::__setDefaults()
 
 	_curBoostPresetIndex = 0;
 
-	__setupFromCurPreset();
+	__setupControlFromCurPreset();
 
 	_displayMaxBrightness = 7;
 	_displayMinBrightness = 4;
@@ -560,9 +630,21 @@ void BoostOptions::__setDefaults()
 	_displayFlashOn = true;
 }
 
-void BoostOptions::__setupFromCurPreset()
+void BoostOptions::__setupControlFromCurPreset()
 {
-	_boostControl -> populateDefaultParameters(_boostPresets + _curBoostPresetIndex);
+	if(_presetSelectIndexActive)
+	{
+		_boostControl -> setParameters(_boostPresets + _presetSelectIndex);
+	}
+	else
+	{
+		_boostControl -> setParameters(_boostPresets + _curBoostPresetIndex);
+	}
+}
+
+void BoostOptions::__populateCurPresetFromControl()
+{
+	_boostControl -> getParameters(_boostPresets + _curBoostPresetIndex);
 }
 
 bool BoostOptions::__commitToEeprom()
@@ -584,6 +666,11 @@ bool BoostOptions::__commitToEeprom()
 	// Remember that the first entry in the buffer is the checksum.
 	int index32 = 1;
 
+	// Make sure the local preset values are up to date.
+	// TODO ... Do NOT save preset select input value for current preset index
+	blah;
+	__populateCurPresetFromControl();
+
 	// Five presets.
 	for(int index = 0; index < 5; index++)
 	{
@@ -599,11 +686,15 @@ bool BoostOptions::__commitToEeprom()
 		writeBuffer32[index32++] = curBoostPresets -> zeroPointDuty;
 	}
 
-	int index8 = (index32 - 1) * 4;
+	// index32 is pointing to the start of the memory after the boost presets.
+	int index8 = index32 * 4;
 
 	writeBuffer[index8++] = _displayMaxBrightness;
 	writeBuffer[index8++] = _displayMinBrightness;
 	writeBuffer[index8++] = _curBoostPresetIndex;
+
+	// TODO ... Preset select
+	blah;
 
 	// Calculate byte wise checksum.
 	uint32_t checksum = 0;
@@ -677,14 +768,18 @@ bool BoostOptions::__readFromEeprom()
 				curBoostPresets -> zeroPointDuty = readBuffer32[index32++];
 			}
 
-			int index8 = (index32 - 1) * 4;
+			// index32 is pointing to the start of the memory after the boost presets.
+			int index8 = index32 * 4;
 
 			_displayMaxBrightness = readBuffer[index8++];
 			_displayMinBrightness = readBuffer[index8++];
 			_curBoostPresetIndex = readBuffer[index8++];
 
+			// TODO ... Preset select
+			blah;
+
 			// Set the params on control only after the preset index is read.
-			__setupFromCurPreset();
+			__setupControlFromCurPreset();
 		}
 		else
 		{
@@ -705,42 +800,66 @@ void BoostOptions::__alterCurPresetIndex(int delta)
 
 	if(_curBoostPresetIndex != newPresetIndex)
 	{
+		// Save previous preset values.
+		__populateCurPresetFromControl();
+
 		_curBoostPresetIndex = newPresetIndex;
 
-		__setupFromCurPreset();
+		__setupControlFromCurPreset();
 	}
 }
 
 void BoostOptions::__processSwitches()
 {
-	unsigned curSelectUpStateIndex = _selectUpButton -> getCurrentStateCycleIndex();
-	unsigned curDownStateIndex = _downButton -> getCurrentStateCycleIndex();
+	unsigned curSelectStateIndex = _selectButton -> getCurrentStateCycleIndex();
+	unsigned curLeftStateIndex = _leftButton -> getCurrentStateCycleIndex();
+	unsigned curRightStateIndex = _rightButton -> getCurrentStateCycleIndex();
+	unsigned curIncreaseStateIndex = _increaseButton -> getCurrentStateCycleIndex();
+	unsigned curDecreaseStateIndex = _decreaseButton -> getCurrentStateCycleIndex();
 
-	bool selectUpStateUnProc = curSelectUpStateIndex != _lastProcSelectUpButtonStateIndex;
-	bool downStateUnProc = curDownStateIndex != _lastProcDownButtonStateIndex;
+	unsigned curPresetSelectIndex = _presetSelectInput -> getCurrentStateCycleIndex();
+
+	bool selectStateUnProc = curSelectStateIndex != _lastProcSelectButtonStateIndex;
+	bool leftStateUnProc = curLeftStateIndex != _lastProcLeftButtonStateIndex;
+	bool rightStateUnProc = curRightStateIndex != _lastProcRightButtonStateIndex;
+	bool increaseStateUnProc = curIncreaseStateIndex != _lastProcIncreaseButtonStateIndex;
+	bool decreaseStateUnProc = curDecreaseStateIndex != _lastProcDecreaseButtonStateIndex;
+
+	bool presetSelectStateUnProc = curPresetSelectIndex != _lastProcPresetSelectInputIndex;
 
 	// Full processed flags.
-	bool selectUpProced = false;
-	bool downProced = false;
+	bool selectProced = false;
+	bool leftProced = false;
+	bool rightProced = false;
+	bool increaseProced = false;
+	bool decreaseProced = false;
 
-	// Check for test invokation. Both buttons pressed.
-	if(selectUpStateUnProc && downStateUnProc && _selectUpButton -> getSwitchState() &&
-		_selectUpButton -> getSwitchStateDuration() > TEST_START_TIMEOUT && _downButton -> getSwitchState() &&
-		_downButton -> getSwitchStateDuration() > TEST_START_TIMEOUT)
+	bool presetSelectProced = false;
+
+	// Check for test invocation. Select pressed for an extended duration.
+	if(selectStateUnProc && _selectButton -> getSwitchState() && _selectButton -> getSwitchStateDuration() > TEST_START_TIMEOUT)
 	{
 		__runTests();
 
-		_lastProcSelectUpButtonStateIndex = curSelectUpStateIndex;
-		_lastProcDownButtonStateIndex = curDownStateIndex;
+		_lastProcSelectButtonStateIndex = curSelectStateIndex;
+		_lastProcLeftButtonStateIndex = curLeftStateIndex;
+		_lastProcRightButtonStateIndex = curRightStateIndex;
+		_lastProcIncreaseButtonStateIndex = curIncreaseStateIndex;
+		_lastProcDecreaseButtonStateIndex = curDecreaseStateIndex;
+
+		_lastProcPresetSelectInputIndex = curPresetSelectIndex;
 
 		return;
 	}
 
-	// Regardless of the current selected option, both switches not being pressed for greater than the mode complete timeout
+	// Regardless of the current selected option, all switches not being pressed for greater than the mode complete timeout
 	// puts the system back into a default mode. However solenoid duty cycle being displayed stays as is.
-	if(!_selectUpButton -> getSwitchState() && !_downButton -> getSwitchState() &&
-		_selectUpButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
-		_downButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT)
+	if(!_selectButton -> getSwitchState() && _selectButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		!_leftButton -> getSwitchState() && _leftButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		!_rightButton -> getSwitchState() && _rightButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		!_increaseButton -> getSwitchState() && _increaseButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		!_decreaseButton -> getSwitchState() && _decreaseButton -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT &&
+		_presetSelectInput -> getSwitchStateDuration() > MODE_COMPLETE_TIMEOUT)
 	{
 		if(_curSelectedOption != CURRENT_DUTY && _curSelectedOption != CURRENT_BOOST_PSI &&
 			_curSelectedOption != CURRENT_BOOST_KPA)
@@ -750,58 +869,89 @@ void BoostOptions::__processSwitches()
 
 		_editMode = false;
 
-		selectUpProced = true;
-		downProced = true;
+		selectProced = true;
+		leftProced = true;
+		rightProced = true;
+		increaseProced = true;
+		decreaseProced = true;
 	}
 	else if(!_editMode)
 	{
-		if(selectUpStateUnProc || downStateUnProc)
+		if(presetSelectStateUnProc)
 		{
-			// Look for edit mode entry, which can't happen in (default) boost display mode or solenoid valve duty display mode.
-			if(_curSelectedOption > CURRENT_DUTY && _selectUpButton -> getSwitchState() &&
-				_selectUpButton -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME && !_downButton -> getSwitchState())
+			// Always process this first because it affects entry into edit mode.
+			if(_presetSelectInput -> getSwitchState())
+			{
+				_presetSelectIndexActive = true;
+			}
+			else
+			{
+				_presetSelectIndexActive = false;
+			}
+
+			__setupControlFromCurPreset();
+
+			presetSelectProced = true;
+		}
+
+		// Remember that all buttons only trigger something upon release. This is so that press and hold actions can be
+		// detected.
+
+		if(selectStateUnProc || leftStateUnProc || rightStateUnProc || increaseStateUnProc || decreaseStateUnProc)
+		{
+			// TODO ... Maybe increase/decrease can alter current preset without going into edit mode???
+			blah;
+
+			// Look for edit mode entry, which can't happen in either boost display modes or solenoid valve duty display mode.
+			if(_curSelectedOption > CURRENT_DUTY && _selectButton -> getSwitchState() &&
+				_selectButton -> getSwitchStateDuration() > MODE_ENTER_EDIT_TIME)
 			{
 				_editMode = true;
-
-				selectUpProced = true;
-				downProced = true;
 			}
-			else if(selectUpStateUnProc && !_selectUpButton -> getSwitchState())
+			else if(rightStateUnProc && !_rightButton -> getSwitchState())
 			{
-				// Change to the next state on select button _release_.
+				// Change to the next state on right button _release_.
 				_curSelectedOption++;
 
 				if(_curSelectedOption >= SELECT_OPTION_LAST) _curSelectedOption = CURRENT_BOOST_PSI;
-
-				selectUpProced = true;
-				downProced = true;
 			}
-			else if(downStateUnProc && !_downButton -> getSwitchState())
+			else if(leftStateUnProc && !_leftButton -> getSwitchState())
 			{
-				// Change to the previous state on down button _release_.
+				// Change to the previous state on left button _release_.
 				_curSelectedOption--;
 
 				if(_curSelectedOption < 0) _curSelectedOption = SELECT_OPTION_LAST - 1;
-
-				selectUpProced = true;
-				downProced = true;
 			}
+
+			// Generally assume all buttons are now processed.
+			selectProced = true;
+			leftProced = true;
+			rightProced = true;
+			increaseProced = true;
+			decreaseProced = true;
 		}
 	}
 	else
 	{
 		// Should be in edit mode.
 
-		// Both buttons pressed at the same time exit edit mode.
-		if(_selectUpButton -> getSwitchState() && _downButton -> getSwitchState())
+		// Select button exits edit mode.
+		if(_selectButton -> getSwitchState())
 		{
 			_editMode = false;
 
-			selectUpProced = true;
-			downProced = true;
+			// Basically reset all switch states.
+			selectProced = true;
+			leftProced = true;
+			rightProced = true;
+			increaseProced = true;
+			decreaseProced = true;
 
 			// If in factory reset mode, explicit exit of edit mode triggers the reset.
 			if(_curSelectedOption == FACTORY_RESET) __invokeFactoryReset();
+
+			// Auto tune is only triggered by edit mode exiting.
+			if(_curSelectedOption == AUTO_TUNE) __invokeAutoTune();
 
 			// Save options to EEPROM.
 			__commitToEeprom();
@@ -883,6 +1033,12 @@ void BoostOptions::__processSwitches()
 						__alterCurPresetIndex(delta);
 						break;
 
+					case PRESET_SELECT_INDEX:
+
+						// TODO ...
+						blah;
+						break;
+
 					case BOOST_MAX_KPA:
 
 						// Max kPa is scaled by 1000. Resolution 1.
@@ -950,12 +1106,25 @@ void BoostOptions::__processSwitches()
 	}
 
 	// Save the indexes of any fully processed buttons.
-	if(selectUpProced) _lastProcSelectUpButtonStateIndex = curSelectUpStateIndex;
-	if(downProced) _lastProcDownButtonStateIndex = curDownStateIndex;
+	if(selectProced) _lastProcSelectButtonStateIndex = curSelectStateIndex;
+	if(leftProced) _lastProcLeftButtonStateIndex = curLeftStateIndex;
+	if(rightProced) _lastProcRightButtonStateIndex = curRightStateIndex;
+	if(increaseProced) _lastProcIncreaseButtonStateIndex = curIncreaseStateIndex;
+	if(decreaseProced) _lastProcDecreaseButtonStateIndex = curDecreaseStateIndex;
+
+	if(presetIncrProced) _lastProcPresetSelectInputIndex = curPresetIncrIndex;
 }
 
 void BoostOptions::__runTests()
 {
+	// Show "test" on display.
+	_dispData[0] = _display -> encodeAlpha('T');
+	_dispData[1] = _display -> encodeAlpha('E');
+	_dispData[2] = _display -> encodeAlpha('S');
+	_dispData[3] = _display -> encodeAlpha('T');
+
+	_display -> show(_dispData);
+
 	// Allows testing equipment to detect test start.
 	gpio_put(BOOST_OPTIONS_TEST_ACTIVE_GPIO, true);
 

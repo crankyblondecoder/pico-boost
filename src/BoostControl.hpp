@@ -30,7 +30,11 @@
 /** Time in seconds over which the PID integral term is summed. */
 #define CONTROL_PID_INTEG_SUM_TIME 0.5
 
-/** Class to control a single instance of a boost control solenoid. */
+/**
+ * Class to control a single instance of a boost control solenoid.
+ * @note This _only_ controls duty cycle where an increase in duty increases boost. ie The solenoid de-energizing takes the
+ *       system back to waste gate spring pressure.
+ */
 class BoostControl
 {
 	public:
@@ -90,11 +94,6 @@ class BoostControl
 		unsigned getMaxKpaScaled();
 
 		/**
-		 * Set the maximum boost, relative to std atm. In kPa, scaled by 1000.
-		 */
-		void setMaxKpaScaled(unsigned maxKpaScaled);
-
-		/**
 		 * Alter the maximum boost, relative to std atm, by adjusting it by a delta.
 		 * @param maxBoostKpaScaledDelta Delta, scaled by 1000.
 		 */
@@ -104,11 +103,6 @@ class BoostControl
 		 * Get the de-energise boost, relative to std atm. In kPa, scaled by 1000.
 		 */
 		unsigned getDeEnergiseKpaScaled();
-
-		/**
-		 * Set the de-energise boost, relative to std atm. In kPa, scaled by 1000.
-		 */
-		void setDeEnergiseKpaScaled(unsigned kpaScaled);
 
 		/**
 		 * Alter the de-energise boost, relative to std atm, by adjusting it by a delta.
@@ -122,11 +116,6 @@ class BoostControl
 		unsigned getPidActiveKpaScaled();
 
 		/**
-		 * Set the pid active boost, relative to std atm. In kPa, scaled by 1000.
-		 */
-		void setPidActiveKpaScaled(unsigned kpaScaled);
-
-		/**
 		 * Alter the pid active boost, relative to std atm, by adjusting it by a delta.
 		 * @param delta Delta, scaled by 1000.
 		 */
@@ -136,11 +125,6 @@ class BoostControl
 		 * Get the PID proportional constant. Scaled by 1000.
 		 */
 		unsigned getPidPropConstScaled();
-
-		/**
-		 * Set the PID proportional constant. Scaled by 1000.
-		 */
-		void setPidPropConstScaled(unsigned pidPropConstScaled);
 
 		/**
 		 * Alter the PID proportional constant by adjusting it by a delta.
@@ -154,11 +138,6 @@ class BoostControl
 		unsigned getPidIntegConstScaled();
 
 		/**
-		 * Set the PID integration constant. Scaled by 1000.
-		 */
-		void setPidIntegConstScaled(unsigned pidIntegConstScaled);
-
-		/**
 		 * Alter the PID integration constant by adjusting it by a delta.
 		 * @param pidIntegConstScaledDelta Delta, scaled by 1000.
 		 */
@@ -168,11 +147,6 @@ class BoostControl
 		 * Get the PID derivative constant. Scaled by 1000.
 		 */
 		unsigned getPidDerivConstScaled();
-
-		/**
-		 * Set the PID derivative constant. Scaled by 1000.
-		 */
-		void setPidDerivConstScaled(unsigned pidDerivConstScaled);
 
 		/**
 		 * Alter the PID derivative constant by adjusting it by a delta.
@@ -186,11 +160,6 @@ class BoostControl
 		unsigned getMaxDutyScaled();
 
 		/**
-		 * Set maximum duty cycle the solenoid can be set at. Scaled by 10.
-		 */
-		void setMaxDutyScaled(unsigned maxDuty);
-
-		/**
 		 * Alter maximum duty cycle the solenoid can be set at.
 		 * @param maxDutyDelta Delta, scaled by 10.
 		 */
@@ -200,11 +169,6 @@ class BoostControl
 		 * Get zero point duty cycle of the solenoid. Scaled by 10.
 		 */
 		unsigned getZeroPointDutyScaled();
-
-		/**
-		 * Set zero point duty cycle of the solenoid. Scaled by 10.
-		 */
-		void setZeroPointDutyScaled(unsigned zeroPointDuty);
 
 		/**
 		 * Alter zero point duty cycle of the solenoid.
@@ -296,6 +260,46 @@ class BoostControl
 
 		/** Disable the boost control solenoid. */
 		void __disableSolenoid();
+
+		/**
+		 * Set the maximum boost, relative to std atm. In kPa, scaled by 1000.
+		 */
+		void __setMaxKpaScaled(unsigned maxKpaScaled);
+
+		/**
+		 * Set the pid active boost, relative to std atm. In kPa, scaled by 1000.
+		 */
+		void __setPidActiveKpaScaled(unsigned kpaScaled);
+
+		/**
+		 * Set the de-energise boost, relative to std atm. In kPa, scaled by 1000.
+		 */
+		void __setDeEnergiseKpaScaled(unsigned kpaScaled);
+
+		/**
+		 * Set the PID proportional constant. Scaled by 1000.
+		 */
+		void __setPidPropConstScaled(unsigned pidPropConstScaled);
+
+		/**
+		 * Set the PID integration constant. Scaled by 1000.
+		 */
+		void __setPidIntegConstScaled(unsigned pidIntegConstScaled);
+
+		/**
+		 * Set the PID derivative constant. Scaled by 1000.
+		 */
+		void __setPidDerivConstScaled(unsigned pidDerivConstScaled);
+
+		/**
+		 * Set maximum duty cycle the solenoid can be set at. Scaled by 10.
+		 */
+		void __setMaxDutyScaled(unsigned maxDuty);
+
+		/**
+		 * Set zero point duty cycle of the solenoid. Scaled by 10.
+		 */
+		void __setZeroPointDutyScaled(unsigned zeroPointDuty);
 };
 
 #endif

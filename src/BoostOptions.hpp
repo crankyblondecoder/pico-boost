@@ -14,7 +14,9 @@
 // E: Default display energised.
 // L: Default display max boost reached.
 // C: Current solenoid control valve duty cycle.
-// T: CURRENT_PRESET_INDEX
+// BN (Flashing ':' means this is active): CURRENT_PRESET_INDEX
+// BS (Flashing ':' means this is active): PRESET_SELECT_INDEX
+// AUTO: AUTO_TUNE
 // B: BOOST_MAX_KPA
 // U: BOOST_DE_ENERGISE_KPA
 // A: BOOST_PID_ACTIVE_KPA
@@ -23,9 +25,9 @@
 // D: BOOST_PID_DERIV_CONST
 // Q: BOOST_MAX_DUTY
 // O: BOOST_ZERO_POINT_DUTY
-// R: DISPLAY_MAX_BRIGHTNESS
-// H: DISPLAY_MIN_BRIGHTNESS
-// Y: FACTORY_RESET
+// BH: DISPLAY_MAX_BRIGHTNESS
+// BL: DISPLAY_MIN_BRIGHTNESS
+// FR: FACTORY_RESET
 
 /** The GPIO pin that is set high to indicate that boost options initiated testing is active. */
 #define BOOST_OPTIONS_TEST_ACTIVE_GPIO 3
@@ -66,6 +68,12 @@ class BoostOptions
 
 			/** Current boost parameters preset index. */
 			CURRENT_PRESET_INDEX,
+
+			/** The preset select index. ie The preset index that is chosen when externally switched. */
+			PRESET_SELECT_INDEX,
+
+			/** Automatically tune the PID algoirthm for the current preset index. */
+			AUTO_TUNE,
 
 			/** Maximum boost, in kPa. */
 			BOOST_MAX_KPA,
@@ -116,20 +124,44 @@ class BoostOptions
 		/** Single boost control instance to apply options to. */
 		BoostControl* _boostControl;
 
-		/** Button for select/up operations. */
-		PicoSwitch* _selectUpButton;
+		/** Navigation button for select. */
+		PicoSwitch* _selectButton;
 
-		/** The last _fully_ procesed select/up button state index. */
-		unsigned _lastProcSelectUpButtonStateIndex = 0;
+		/** The last _fully_ processed select button state index. */
+		unsigned _lastProcSelectButtonStateIndex = 0;
 
-		/** Button for down operation. */
-		PicoSwitch* _downButton;
+		/** Navigation button for left. */
+		PicoSwitch* _leftButton;
 
-		/** The last _fully_ processed down button state index. */
-		unsigned _lastProcDownButtonStateIndex = 0;
+		/** The last _fully_ processed left button state index. */
+		unsigned _lastProcLeftButtonStateIndex = 0;
+
+		/** Navigation button for right. */
+		PicoSwitch* _rightButton;
+
+		/** The last _fully_ processed right button state index. */
+		unsigned _lastProcRightButtonStateIndex = 0;
+
+		/** Navigation button for increase. */
+		PicoSwitch* _increaseButton;
+
+		/** The last _fully_ processed increase button state index. */
+		unsigned _lastProcIncreaseButtonStateIndex = 0;
+
+		/** Navigation button for decrease. */
+		PicoSwitch* _decreaseButton;
+
+		/** The last _fully_ processed decrease button state index. */
+		unsigned _lastProcDecreaseButtonStateIndex = 0;
 
 		/** Detect gpio being asserted for minimum display brightness as a switch. */
 		PicoSwitch* _minBrightnessInput;
+
+		/** Detect gpio being asserted for a pre-defined boost preset as a switch. */
+		PicoSwitch* _presetSelectInput;
+
+		/** Last fully processed preset select switch state index. */
+		unsigned _lastProcPresetSelectInputIndex = 0;
 
 		/** 4 Digit display. */
 		TM1637Display* _display;
@@ -181,6 +213,12 @@ class BoostOptions
 		/** Index of the current boost preset being used. */
 		int _curBoostPresetIndex = 0;
 
+		/** The preset index that is activated if the preset select input is triggered. */
+		int _presetSelectIndex = 0;
+
+		/** True if the preset select index is active. */
+		bool _presetSelectIndexActive = false;
+
 		/** Run options related tests. */
 		void __runTests();
 
@@ -218,13 +256,16 @@ class BoostOptions
 		void __displayBoostZeroPointDuty();
 
 		/** Display the maximum display brightness. */
-		void __displayShowMaxBrightness();
+		void __displayMaxBrightness();
 
 		/** Display the maximum display brightness. */
-		void __displayShowMinBrightness();
+		void __displayMinBrightness();
 
 		/** Display the factory reset indicator. */
-		void __displayShowFactoryReset();
+		void __displayFactoryReset();
+
+		/** Display the auto tune indicator. */
+		void __displayAutoTune();
 
 		/** Display the current boost preset index. */
 		void __displayCurrentPresetIndex();
@@ -232,11 +273,17 @@ class BoostOptions
 		/** Invoke the factory reset. */
 		void __invokeFactoryReset();
 
+		/** Invoke auto tune for current preset. */
+		void __invokeAutoTune();
+
 		/** Set all variables to default values. */
 		void __setDefaults();
 
-		/** Setup boost parameters from the current preset. */
-		void __setupFromCurPreset();
+		/** Setup boost control parameters from the current preset. */
+		void __setupControlFromCurPreset();
+
+		/** Populate current preset from current boost control parameters. */
+		void __populateCurPresetFromControl();
 
 		/**
 		 * Commit the current boost options to EEPROM.

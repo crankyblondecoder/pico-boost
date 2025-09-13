@@ -56,21 +56,21 @@ void BoostControl::getParameters(BoostControlParameters* params)
 
 void BoostControl::setParameters(BoostControlParameters* params)
 {
-	_curParams.maxKpaScaled = params -> maxKpaScaled;
+	__setMaxKpaScaled(params -> maxKpaScaled);
 
-	_curParams.deEnergiseKpaScaled = params -> deEnergiseKpaScaled;
+	__setDeEnergiseKpaScaled(params -> deEnergiseKpaScaled);
 
-	_curParams.pidActiveKpaScaled = params -> pidActiveKpaScaled;
+	__setPidActiveKpaScaled(params -> pidActiveKpaScaled);
 
-	_curParams.pidPropConstScaled = params -> pidPropConstScaled;
+	__setPidPropConstScaled(params -> pidPropConstScaled);
 
-	_curParams.pidIntegConstScaled = params -> pidIntegConstScaled;
+	__setPidIntegConstScaled(params -> pidIntegConstScaled);
 
-	_curParams.pidDerivConstScaled = params -> pidDerivConstScaled;
+	__setPidDerivConstScaled(params -> pidDerivConstScaled);
 
-	_curParams.maxDuty = params -> maxDuty;
+	__setMaxDutyScaled(params -> maxDuty);
 
-	_curParams.zeroPointDuty = params -> zeroPointDuty;
+	__setZeroPointDutyScaled(params -> zeroPointDuty);
 }
 
 void BoostControl::populateDefaultParameters(BoostControlParameters* params)
@@ -91,7 +91,7 @@ void BoostControl::populateDefaultParameters(BoostControlParameters* params)
 
 	params -> maxDuty = 950;
 
-	params -> zeroPointDuty = 200;
+	params -> zeroPointDuty = 500;
 }
 
 void BoostControl::poll()
@@ -146,7 +146,7 @@ unsigned BoostControl::getMaxKpaScaled()
 	return _curParams.maxKpaScaled;
 }
 
-void BoostControl::setMaxKpaScaled(unsigned maxKpaScaled)
+void BoostControl::__setMaxKpaScaled(unsigned maxKpaScaled)
 {
 	_curParams.maxKpaScaled = maxKpaScaled;
 }
@@ -163,7 +163,7 @@ unsigned BoostControl::getDeEnergiseKpaScaled()
 	return _curParams.deEnergiseKpaScaled;
 }
 
-void BoostControl::setDeEnergiseKpaScaled(unsigned kpaScaled)
+void BoostControl::__setDeEnergiseKpaScaled(unsigned kpaScaled)
 {
 	_curParams.deEnergiseKpaScaled = kpaScaled;
 }
@@ -180,7 +180,7 @@ unsigned BoostControl::getPidActiveKpaScaled()
 	return _curParams.pidActiveKpaScaled;
 }
 
-void BoostControl::setPidActiveKpaScaled(unsigned kpaScaled)
+void BoostControl::__setPidActiveKpaScaled(unsigned kpaScaled)
 {
 	_curParams.pidActiveKpaScaled = kpaScaled;
 }
@@ -197,7 +197,7 @@ unsigned BoostControl::getPidPropConstScaled()
 	return _curParams.pidPropConstScaled;
 }
 
-void BoostControl::setPidPropConstScaled(unsigned pidPropConstScaled)
+void BoostControl::__setPidPropConstScaled(unsigned pidPropConstScaled)
 {
 	_curParams.pidPropConstScaled = pidPropConstScaled;
 }
@@ -214,7 +214,7 @@ unsigned BoostControl::getPidIntegConstScaled()
 	return _curParams.pidIntegConstScaled;
 }
 
-void BoostControl::setPidIntegConstScaled(unsigned pidIntegConstScaled)
+void BoostControl::__setPidIntegConstScaled(unsigned pidIntegConstScaled)
 {
 	_curParams.pidIntegConstScaled = pidIntegConstScaled;
 }
@@ -231,7 +231,7 @@ unsigned BoostControl::getPidDerivConstScaled()
 	return _curParams.pidDerivConstScaled;
 }
 
-void BoostControl::setPidDerivConstScaled(unsigned pidDerivConstScaled)
+void BoostControl::__setPidDerivConstScaled(unsigned pidDerivConstScaled)
 {
 	_curParams.pidDerivConstScaled = pidDerivConstScaled;
 }
@@ -248,11 +248,11 @@ unsigned BoostControl::getMaxDutyScaled()
 	return _curParams.maxDuty;
 }
 
-void BoostControl::setMaxDutyScaled(unsigned maxDuty)
+void BoostControl::__setMaxDutyScaled(unsigned maxDuty)
 {
 	_curParams.maxDuty = maxDuty;
 
-	if(_curParams.maxDuty > 1000) _curParams.maxDuty = 1000;
+	if(_curParams.maxDuty > 999) _curParams.maxDuty = 999;
 }
 
 void BoostControl::alterMaxDutyScaled(int maxDutyDelta)
@@ -261,7 +261,7 @@ void BoostControl::alterMaxDutyScaled(int maxDutyDelta)
 
 	if(newVal > 0) _curParams.maxDuty = newVal; else _curParams.maxDuty = 0;
 
-	if(_curParams.maxDuty > 1000) _curParams.maxDuty = 1000;
+	if(_curParams.maxDuty > 999) _curParams.maxDuty = 999;
 }
 
 unsigned BoostControl::getZeroPointDutyScaled()
@@ -269,11 +269,11 @@ unsigned BoostControl::getZeroPointDutyScaled()
 	return _curParams.zeroPointDuty;
 }
 
-void BoostControl::setZeroPointDutyScaled(unsigned zeroPointDuty)
+void BoostControl::__setZeroPointDutyScaled(unsigned zeroPointDuty)
 {
 	_curParams.zeroPointDuty = zeroPointDuty;
 
-	if(_curParams.zeroPointDuty > 1000) _curParams.zeroPointDuty = 1000;
+	if(_curParams.zeroPointDuty > 999) _curParams.zeroPointDuty = 999;
 }
 
 void BoostControl::alterZeroPointDutyScaled(int dutyDelta)
@@ -282,7 +282,7 @@ void BoostControl::alterZeroPointDutyScaled(int dutyDelta)
 
 	if(newVal > 0) _curParams.zeroPointDuty = newVal; else _curParams.zeroPointDuty = 0;
 
-	if(_curParams.zeroPointDuty > 1000) _curParams.zeroPointDuty = 1000;
+	if(_curParams.zeroPointDuty > 999) _curParams.zeroPointDuty = 999;
 }
 
 unsigned BoostControl::getCurrentDutyScaled()
@@ -329,7 +329,7 @@ void BoostControl::__processControlSolenoid()
 		{
 			if(curBoostScaled < (int)_curParams.pidActiveKpaScaled)
 			{
-				// Just pin at max duty.
+				// Pin at max duty to get maximum boost.
 				__setSolenoidDuty(_curParams.maxDuty);
 
 				_pidActive = false;
