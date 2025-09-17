@@ -67,6 +67,12 @@ class TM1637Display
 		 */
 		uint8_t encodeAlpha(char character);
 
+		/**
+		 * Set the bits on the encoded segment bitmap to display the segments for the colon.
+		 * @note Not every position in the display can show this.
+		 */
+		void encodeColon(uint8_t* encodedBitmap);
+
 	private:
 
 		/** Write start bit pattern. */

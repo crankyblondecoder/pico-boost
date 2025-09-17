@@ -207,6 +207,11 @@ void TM1637Display::encodeNumber(unsigned number, unsigned numDigits, unsigned s
 	}
 }
 
+void TM1637Display::encodeColon(uint8_t* encodedBitmap)
+{
+	*encodedBitmap |= 0b10000000;
+}
+
 uint8_t TM1637Display::encodeAlpha(char character)
 {
 	uint8_t retVal = 0;

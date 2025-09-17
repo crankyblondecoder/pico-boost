@@ -42,8 +42,8 @@ class PicoSwitch
 		unsigned getSwitchStateDuration();
 
 		/**
-		 * Get the current state cycle index. This is the index of the switch press as the start of the switch
-		 * press/release cycle.
+		 * Get the current state cycle index. This is the index of the switch press as the _start_ of the switch
+		 * press/release cycle. ie It only increments once per on/off cycle.
 		 * @returns Cycle index number. 0 indicates that no cycle has begun yet.
 		 */
 		unsigned getCurrentStateCycleIndex();

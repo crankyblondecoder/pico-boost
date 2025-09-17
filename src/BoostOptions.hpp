@@ -160,9 +160,6 @@ class BoostOptions
 		/** Detect gpio being asserted for a pre-defined boost preset as a switch. */
 		PicoSwitch* _presetSelectInput;
 
-		/** Last fully processed preset select switch state index. */
-		unsigned _lastProcPresetSelectInputIndex = 0;
-
 		/** 4 Digit display. */
 		TM1637Display* _display;
 
@@ -191,10 +188,10 @@ class BoostOptions
 		bool _editMode = false;
 
 		/** During edit mode fast mode, the last up switch duration that was acted upon. */
-		unsigned _lastEditFastModeUpDuration = 0;
+		unsigned _lastEditFastModeIncreaseDuration = 0;
 
 		/** During edit mode fast mode, the last down switch duration that was acted upon. */
-		unsigned _lastEditFastModeDownDuration = 0;
+		unsigned _lastEditFastModeDecreaseDuration = 0;
 
 		/** Flag to indicate whether display is on in the display "flashing" cycle. */
 		bool _displayFlashOn = true;
@@ -210,8 +207,8 @@ class BoostOptions
 		/** Boost presets. */
 		BoostControlParameters _boostPresets[5];
 
-		/** Index of the current boost preset being used. */
-		int _curBoostPresetIndex = 0;
+		/** Index of the preset when preset select is not active. */
+		int _presetIndex = 0;
 
 		/** The preset index that is activated if the preset select input is triggered. */
 		int _presetSelectIndex = 0;
@@ -267,8 +264,11 @@ class BoostOptions
 		/** Display the auto tune indicator. */
 		void __displayAutoTune();
 
-		/** Display the current boost preset index. */
-		void __displayCurrentPresetIndex();
+		/** Display the preset index. */
+		void __displayPresetIndex();
+
+		/** Display the preset select index. */
+		void __displayPresetSelectIndex();
 
 		/** Invoke the factory reset. */
 		void __invokeFactoryReset();
@@ -298,9 +298,14 @@ class BoostOptions
 		bool __readFromEeprom();
 
 		/**
-		 * Alter the current preset index by the given delta.
+		 * Alter the preset index by the given delta.
 		 */
-		void __alterCurPresetIndex(int delta);
+		void __alterPresetIndex(int delta);
+
+		/**
+		 * Alter the preset select index by the given delta.
+		 */
+		void __alterPresetSelectIndex(int delta);
 
 		/**
 		 * Process all option related switches.
