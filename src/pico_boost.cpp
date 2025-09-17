@@ -14,6 +14,11 @@
 /** The ADC channel used to get VSYS voltage. */
 #define VSYS_REF_CHANNEL 3
 
+#define ON_BOARD_LED_FLASH_TIME_US 500000
+
+bool onBoardLedOn = true;
+absolute_time_t lastonBoardLedToggleTime;
+
 bool debugMsgActive = true;
 
 // Debug flag to get around timers being a pain. Set during debug only.
@@ -70,6 +75,11 @@ int main()
 	// Start second core which will read sensor data and control the wastegate solenoid.
 	multicore_launch_core1(__core1_entry);
 
+	// Use onboard LED to indicate startup status.
+	gpio_init(PICO_DEFAULT_LED_PIN);
+	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+	gpio_put(PICO_DEFAULT_LED_PIN, onBoardLedOn);
+
 	// Wait for boost control to be instantiated on core 1.
 	while(!boostControl)
 	{
@@ -84,9 +94,19 @@ int main()
 
 	boostOptions = new BoostOptions(boostControl);
 
+	lastonBoardLedToggleTime = get_absolute_time();
+
 	// Main processing loop. Used for user interaction.
 	while(1)
 	{
+		absolute_time_t curTime = get_absolute_time();
+		if(absolute_time_diff_us(lastonBoardLedToggleTime, curTime) >= ON_BOARD_LED_FLASH_TIME_US)
+		{
+			onBoardLedOn = !onBoardLedOn;
+			lastonBoardLedToggleTime = curTime;
+			gpio_put(PICO_DEFAULT_LED_PIN, onBoardLedOn);
+		}
+
 		boostOptions -> poll();
 	}
 }

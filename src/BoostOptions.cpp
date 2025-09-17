@@ -160,7 +160,6 @@ void BoostOptions::poll()
 
 			case PRESET_SELECT_INDEX:
 
-				// TODO ...
 				__displayPresetSelectIndex();
 				break;
 
